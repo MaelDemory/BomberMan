@@ -470,6 +470,26 @@ input::placeholder {
 
 #hud-stats {
   color: var(--on-cobalt-muted);
+  display: inline-block;
+  transform-origin: right center;
+}
+
+/* Bump du HUD au ramassage d'un bonus (classe posée par lobby.ts). */
+.hud-bump {
+  animation: hud-bump 350ms var(--spring);
+}
+
+@keyframes hud-bump {
+  30% {
+    transform: scale(1.25);
+    color: #fff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-bump {
+    animation: none;
+  }
 }
 
 .canvas-wrap {

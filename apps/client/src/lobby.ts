@@ -253,5 +253,24 @@ export function updateHud(state: GameState, selfId: PlayerId): void {
   const alive = state.players.filter((p) => p.alive).length;
   el('hud-alive').textContent = `Vivants ${alive}/${state.players.length}`;
   const me = state.players.find((p) => p.id === selfId);
-  el('hud-stats').textContent = me ? `Bombes ${me.maxBombs} · Portée ${me.flame} · Vitesse ${me.speed}` : '';
+  const stats = el('hud-stats');
+  stats.textContent = me ? `Bombes ${me.maxBombs} · Portée ${me.flame} · Vitesse ${me.speed}` : '';
+
+  // Bump de la stat quand un bonus est ramassé (une hausse, jamais une baisse —
+  // le retour aux stats de base en début de partie ne déclenche rien).
+  if (me) {
+    const gained =
+      prevStats !== null &&
+      (me.maxBombs > prevStats.bombs || me.flame > prevStats.flame || me.speed > prevStats.speed);
+    if (gained) {
+      stats.classList.remove('hud-bump');
+      void stats.offsetWidth; // relance l'animation CSS
+      stats.classList.add('hud-bump');
+    }
+    prevStats = { bombs: me.maxBombs, flame: me.flame, speed: me.speed };
+  } else {
+    prevStats = null;
+  }
 }
+
+let prevStats: { bombs: number; flame: number; speed: number } | null = null;

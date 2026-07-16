@@ -1,4 +1,5 @@
 import { Application, Container, Graphics, Text } from 'pixi.js';
+import { createPickupEffects, type RenderedPos } from './effects';
 import {
   BOMB_FUSE_TICKS,
   EMPTY_INPUT,
@@ -72,7 +73,9 @@ export async function createGameView(
 
   const gfx = new Graphics();
   const labelLayer = new Container();
-  app.stage.addChild(gfx, labelLayer);
+  const fxLayer = new Container(); // textes flottants des effets, au-dessus des pseudos
+  app.stage.addChild(gfx, labelLayer, fxLayer);
+  const fx = createPickupEffects(gfx, fxLayer, CELL);
 
   let snaps: GameState[] = [];
   let selfId: PlayerId = '';
@@ -156,7 +159,7 @@ export async function createGameView(
     }
   }
 
-  function drawPlayers(a: GameState, b: GameState, alpha: number): void {
+  function drawPlayers(a: GameState, b: GameState, alpha: number, positions: Map<PlayerId, RenderedPos>): void {
     const byIdB = new Map(b.players.map((p) => [p.id, p]));
     const seen = new Set<PlayerId>();
     for (const pa of a.players) {
@@ -173,12 +176,17 @@ export async function createGameView(
       }
       const bodyAlpha = cur.alive ? 1 : 0.35;
       const color = cur.alive ? colorOf(pa.id) : '#9AA0AE';
+      const squash = fx.squashOf(pa.id); // effet de ramassage : écrasé → rebond
 
       if (pa.id === selfId && cur.alive) {
-        gfx.circle(x, y, 17).stroke({ width: 2.5, color: '#2F5BF0', alpha: 0.9 });
+        gfx.ellipse(x, y, 17 * squash.sx, 17 * squash.sy).stroke({ width: 2.5, color: '#2F5BF0', alpha: 0.9 });
       }
-      gfx.circle(x, y, 14).fill({ color, alpha: bodyAlpha }).stroke({ width: 2, color: '#17223F', alpha: bodyAlpha });
+      gfx
+        .ellipse(x, y, 14 * squash.sx, 14 * squash.sy)
+        .fill({ color, alpha: bodyAlpha })
+        .stroke({ width: 2, color: '#17223F', alpha: bodyAlpha });
       const [dx, dy] = DIR_VEC[dir];
+      positions.set(pa.id, { x, y, dx, dy });
       gfx.circle(x + dx * 5 - dy * 4, y + dy * 5 + dx * 4, 2.5).fill({ color: '#17223F', alpha: bodyAlpha });
       gfx.circle(x + dx * 5 + dy * 4, y + dy * 5 - dx * 4, 2.5).fill({ color: '#17223F', alpha: bodyAlpha });
 
@@ -259,13 +267,17 @@ export async function createGameView(
     drawTiles(disc);
     drawItems(disc, performance.now());
     drawGhosts(disc, performance.now());
-    drawPlayers(a, b, alpha);
+    fx.drawUnder(performance.now()); // croix de portée : au sol, sous les joueurs
+    const positions = new Map<PlayerId, RenderedPos>();
+    drawPlayers(a, b, alpha, positions);
+    fx.drawOver(positions, performance.now());
   });
 
   return {
     start: (players, self) => {
       snaps = [];
       gfx.clear(); // sinon la dernière frame de la partie précédente reste affichée
+      fx.reset();
       selfId = self;
       localKeys = EMPTY_INPUT;
       predicted = null;
@@ -302,6 +314,7 @@ export async function createGameView(
       // absorbe la gigue d'arrivée au lieu de la répercuter sur le rendu.
       const raw = performance.now() - state.tick * TICK_MS;
       clockOffset = clockOffset === null ? raw : clockOffset + (raw - clockOffset) * 0.1;
+      fx.onSnapshot(snaps[snaps.length - 1], state); // détecte les bonus ramassés (diff de stats)
       snaps.push(state);
       if (snaps.length > 30) snaps.shift();
 
