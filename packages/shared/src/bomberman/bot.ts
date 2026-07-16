@@ -24,15 +24,25 @@ export interface BotBrain {
 }
 
 // La difficulté ne change pas les règles, seulement la qualité de jeu :
-// cadence de décision, réaction immédiate ou non au danger, chasse au joueur,
-// recharge des bombes et tendance à hésiter.
+// cadence de décision, réaction immédiate ou non au danger, style de chasse,
+// recharge des bombes et tendance à hésiter. Toutes les difficultés posent
+// sur un ennemi à portée (sinon les fins de partie s'enlisent) ; ce qui varie
+// est la recherche de l'ennemi : 'no' = jamais (rencontres au hasard),
+// 'fallback' = seulement quand plus aucun bloc n'est atteignable,
+// 'always' = en permanence (et perce les blocs en direction de l'ennemi).
 const TUNING: Record<
   BotDifficulty,
-  { repath: number; reactsToDanger: boolean; hunts: boolean; bombCooldown: number; idleChance: number }
+  {
+    repath: number;
+    reactsToDanger: boolean;
+    hunts: 'no' | 'fallback' | 'always';
+    bombCooldown: number;
+    idleChance: number;
+  }
 > = {
-  easy: { repath: 10, reactsToDanger: false, hunts: false, bombCooldown: 60, idleChance: 0.25 },
-  medium: { repath: 5, reactsToDanger: true, hunts: false, bombCooldown: 30, idleChance: 0.05 },
-  hard: { repath: 2, reactsToDanger: true, hunts: true, bombCooldown: 15, idleChance: 0 },
+  easy: { repath: 10, reactsToDanger: false, hunts: 'no', bombCooldown: 60, idleChance: 0.25 },
+  medium: { repath: 5, reactsToDanger: true, hunts: 'fallback', bombCooldown: 30, idleChance: 0.05 },
+  hard: { repath: 2, reactsToDanger: true, hunts: 'always', bombCooldown: 15, idleChance: 0 },
 };
 
 const INF = 1 << 29;
@@ -191,12 +201,12 @@ function plan(
 
   const { dist, prev } = bfs(state, myIdx, danger);
 
-  // 3. Poser ici ? (adjacent à un bloc, ou ennemi à portée pour les chasseurs)
+  // 3. Poser ici ? (adjacent à un bloc, ou ennemi à portée — toutes difficultés)
   const enemies = state.players.filter((p) => p.alive && p.id !== me.id);
   if (state.tick >= brain.bombReadyAt) {
     const myBlast = new Set<number>();
     blastTiles(state, myIdx % GRID_W, Math.floor(myIdx / GRID_W), me.flame, myBlast);
-    const enemyInBlast = cfg.hunts && enemies.some((p) => myBlast.has(centerTileIdx(p)));
+    const enemyInBlast = enemies.some((p) => myBlast.has(centerTileIdx(p)));
     if (adjacentToSoft(state, myIdx) || enemyInBlast) {
       if (canEscapeAfterBomb(state, me, myIdx, danger)) {
         brain.wantBomb = true;
@@ -219,8 +229,8 @@ function plan(
     return;
   }
 
-  // 5. Chasser le joueur le plus proche (difficile uniquement).
-  if (cfg.hunts && enemies.length > 0) {
+  // 5. Chasse permanente (difficile uniquement).
+  if (cfg.hunts === 'always' && enemies.length > 0) {
     const enemyIdx = nearestByDist(dist, (i) => enemies.some((p) => centerTileIdx(p) === i));
     if (enemyIdx !== -1) {
       brain.path = buildPath(prev, myIdx, enemyIdx);
@@ -231,7 +241,7 @@ function plan(
   // 6. Aller se poster contre un bloc destructible : les chasseurs percent
   // vers l'ennemi (bloc qui rapproche le plus), les autres prennent le plus proche.
   let nearSoft = -1;
-  if (cfg.hunts && enemies.length > 0) {
+  if (cfg.hunts === 'always' && enemies.length > 0) {
     let bestScore = INF;
     for (let i = 0; i < dist.length; i++) {
       if (dist[i] === INF || !adjacentToSoft(state, i)) continue;
@@ -255,6 +265,16 @@ function plan(
   if (nearSoft !== -1 && nearSoft !== myIdx) {
     brain.path = buildPath(prev, myIdx, nearSoft);
     return;
+  }
+
+  // 6 bis. Chasse en repli (moyen) : plus aucun bloc atteignable ⇒ marcher
+  // vers l'ennemi le plus proche — les fins de partie ne s'enlisent pas.
+  if (cfg.hunts === 'fallback' && enemies.length > 0) {
+    const enemyIdx = nearestByDist(dist, (i) => enemies.some((p) => centerTileIdx(p) === i));
+    if (enemyIdx !== -1) {
+      brain.path = buildPath(prev, myIdx, enemyIdx);
+      return;
+    }
   }
 
   // 7. Errance : une case atteignable au hasard (grille dégagée en fin de partie).

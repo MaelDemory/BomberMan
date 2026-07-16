@@ -90,6 +90,34 @@ describe('IA des bots', () => {
     expect(state.winner).toBe('bot');
   });
 
+  it('un bot moyen chasse quand il ne reste aucun bloc (fin de partie)', () => {
+    // Plus aucun bloc : la chasse en repli doit mener le bot moyen jusqu'à
+    // la cible immobile à l'autre bout de la carte, et la tuer.
+    const initial = createGame(7, ['cible', 'bot']);
+    for (let i = 0; i < initial.grid.length; i++) {
+      if (initial.grid[i] === Tile.Soft) initial.grid[i] = Tile.Floor;
+    }
+    const { state } = runBot(initial, 'bot', 'medium', 900);
+    expect(bot(state, 'cible').alive).toBe(false);
+    expect(state.winner).toBe('bot');
+  });
+
+  it('un bot facile pose sur un ennemi à portée (opportuniste)', () => {
+    // La cible est immobile à 2 cases du bot, dans sa portée de flamme :
+    // même en facile, le bot doit finir par poser et la tuer.
+    const initial = createGame(7, ['cible', 'bot']);
+    for (let i = 0; i < initial.grid.length; i++) {
+      if (initial.grid[i] === Tile.Soft) initial.grid[i] = Tile.Floor;
+    }
+    initial.players[1].x = 1 * TILE + TILE / 2; // bot en (1,1)
+    initial.players[1].y = 1 * TILE + TILE / 2;
+    initial.players[0].x = 3 * TILE + TILE / 2; // cible en (3,1), portée 2
+    initial.players[0].y = 1 * TILE + TILE / 2;
+    const { state } = runBot(initial, 'bot', 'easy', 400);
+    expect(bot(state, 'cible').alive).toBe(false);
+    expect(bot(state, 'bot').alive).toBe(true);
+  });
+
   it('protocole : addBot/removeBot validés', async () => {
     const { parseClientMsg } = await import('../src/index');
     expect(parseClientMsg('{"type":"addBot","difficulty":"hard"}')).toEqual({ type: 'addBot', difficulty: 'hard' });
