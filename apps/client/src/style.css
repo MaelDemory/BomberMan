@@ -1,18 +1,23 @@
-/* Tokens — source de vérité : DESIGN.md */
+/* Tokens — source de vérité : DESIGN.md (direction Kablam!) */
 :root {
-  --bg: #0f1116;
-  --surface: #171a22;
-  --surface-raised: #1e222d;
-  --border: #2a2f3c;
-  --text: #edeef2;
-  --text-muted: #9aa3b2;
-  --accent: #ffb300;
-  --accent-hover: #ffc533;
-  --accent-ink: #1a1206;
-  --danger-bg: #2a1215;
-  --danger-border: #6b2a2f;
-  --danger-text: #ff9c9c;
-  --font-display: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  --cobalt: #2f5bf0;
+  --cobalt-deep: #2447c9;
+  --cream: #fdf8ef;
+  --cream-shade: #f4ead9;
+  --cream-border: #e6dcc8;
+  --ink: #17223f;
+  --muted: #5b6478;
+  --on-cobalt-muted: #c9d6ff;
+  --bomb-red: #ef3f36;
+  --bomb-red-hover: #f6554c;
+  --bomb-red-press: #b02a23;
+  --spark: #ffd23f;
+  --spark-hover: #ffdb63;
+  --spark-press: #c9a021;
+  --shadow-hard: 0 6px 0 rgb(23 34 63 / 0.35);
+  --shadow-hard-sm: 0 3px 0 rgb(23 34 63 / 0.3);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --font-display: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -27,16 +32,22 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at 50% -20%, #1a1e29 0%, var(--bg) 55%) var(--bg);
-  color: var(--text);
+  background: linear-gradient(180deg, var(--cobalt) 0%, var(--cobalt) 60%, var(--cobalt-deep) 100%) var(--cobalt);
+  color: #fff;
   font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.5;
 }
 
+/* Focus visible partout : jaune sur cobalt, encre sur les surfaces crème. */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 3px solid var(--spark);
   outline-offset: 2px;
+}
+
+.panel :focus-visible,
+.overlay-card :focus-visible {
+  outline-color: var(--ink);
 }
 
 .shell {
@@ -46,6 +57,7 @@ body {
   padding: 48px 16px;
 }
 
+/* Arrivée d'écran : léger overshoot (spring), fondu court en reduced-motion. */
 .screen {
   display: flex;
   flex-direction: column;
@@ -53,6 +65,14 @@ body {
   width: 100%;
   max-width: 380px;
   gap: 16px;
+  animation: screen-in 300ms var(--spring) both;
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
 }
 
 .screen-game {
@@ -65,40 +85,30 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   text-align: center;
 }
 
 .logo {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.8rem, 6vw, 2.4rem);
-  letter-spacing: 0.14em;
-  font-weight: 700;
+  font-size: clamp(2.4rem, 10vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  transform: rotate(-2deg);
+  color: #fff;
+  text-shadow: 0 4px 0 var(--ink);
 }
 
-.logo-accent {
-  color: var(--accent);
-}
-
-/* Signature "mèche" : trait pointillé amber animé */
-.logo::after {
-  content: '';
-  display: block;
-  height: 3px;
-  margin-top: 10px;
-  background: repeating-linear-gradient(90deg, var(--accent) 0 10px, transparent 10px 16px);
-  animation: fuse 1.2s linear infinite;
-}
-
-@keyframes fuse {
-  from { background-position-x: 0; }
-  to { background-position-x: 16px; }
+.bang {
+  color: var(--spark);
 }
 
 .tagline {
   margin: 0;
-  color: var(--text-muted);
+  color: #e7edff;
+  font-weight: 600;
 }
 
 .panel {
@@ -106,35 +116,39 @@ body {
   gap: 12px;
   width: 100%;
   padding: 24px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--cream);
+  border-radius: 20px;
+  box-shadow: var(--shadow-hard);
+  color: var(--ink);
 }
 
 label {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--muted);
 }
 
 input {
   width: 100%;
   padding: 10px 12px;
-  background: #0c0e13;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
+  background: #fff;
+  border: 2px solid var(--cream-border);
+  border-radius: 12px;
+  color: var(--ink);
   font: inherit;
+  font-weight: 600;
 }
 
 input::placeholder {
-  color: #5c6373;
+  color: #98a0b3;
+  font-weight: 500;
 }
 
 .code-input {
   font-family: var(--font-display);
+  font-weight: 800;
   text-transform: uppercase;
   text-align: center;
   letter-spacing: 0.4em;
@@ -154,7 +168,7 @@ input::placeholder {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: var(--text-muted);
+  color: var(--muted);
   font-size: 13px;
 }
 
@@ -162,80 +176,111 @@ input::placeholder {
 .divider::after {
   content: '';
   flex: 1;
-  height: 1px;
-  background: var(--border);
+  height: 2px;
+  border-radius: 1px;
+  background: var(--cream-shade);
 }
 
-/* ----- Boutons ----- */
+/* ----- Boutons : profondeur physique, le bouton s'enfonce à l'appui ----- */
 .btn {
-  padding: 11px 16px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  font: inherit;
-  font-weight: 600;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 14px;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 150ms ease;
 }
 
 .btn:active {
-  transform: translateY(1px);
+  transform: translateY(3px);
 }
 
 .btn-primary {
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--bomb-red);
+  color: #fff;
+  box-shadow: 0 4px 0 var(--bomb-red-press);
 }
 
 .btn-primary:hover {
-  background: var(--accent-hover);
+  background: var(--bomb-red-hover);
+}
+
+.btn-primary:active {
+  box-shadow: 0 1px 0 var(--bomb-red-press);
 }
 
 .btn-primary:disabled {
-  background: var(--surface-raised);
-  color: var(--text-muted);
-  border-color: var(--border);
-  cursor: not-allowed;
+  background: var(--cream-shade);
+  color: var(--muted);
+  box-shadow: none;
   transform: none;
+  cursor: not-allowed;
 }
 
 .btn-secondary {
-  background: transparent;
-  color: var(--text);
-  border-color: var(--border);
+  background: var(--spark);
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--spark-press);
 }
 
 .btn-secondary:hover {
-  background: var(--surface-raised);
-  border-color: var(--text-muted);
+  background: var(--spark-hover);
+}
+
+.btn-secondary:active {
+  box-shadow: 0 1px 0 var(--spark-press);
 }
 
 .hint {
   margin: 0;
-  color: var(--text-muted);
+  color: var(--on-cobalt-muted);
   font-size: 13px;
+  font-weight: 500;
   text-align: center;
+}
+
+.credit {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--on-cobalt-muted);
+  text-align: center;
+}
+
+.credit a {
+  color: #fff;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.credit a:hover {
+  color: var(--spark);
 }
 
 /* ----- Salle d'attente ----- */
 .room-label {
   margin: 0;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--on-cobalt-muted);
 }
 
 .room-code {
-  padding: 12px 20px 12px calc(20px + 0.45em);
+  padding: 12px 24px 12px calc(24px + 0.35em);
   font-family: var(--font-display);
-  font-size: 2.4rem;
-  font-weight: 700;
-  letter-spacing: 0.45em;
-  color: var(--accent);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  font-size: 2.6rem;
+  font-weight: 800;
+  letter-spacing: 0.35em;
+  line-height: 1.2;
+  color: var(--ink);
+  background: var(--cream);
+  border-radius: 18px;
+  box-shadow: var(--shadow-hard);
   user-select: all;
 }
 
@@ -244,7 +289,7 @@ input::placeholder {
   margin: 8px 0 0;
   padding: 0;
   display: grid;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
 }
 
@@ -253,15 +298,29 @@ input::placeholder {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: var(--cream);
+  border-radius: 14px;
+  box-shadow: var(--shadow-hard-sm);
+  color: var(--ink);
+}
+
+/* Jeton qui « tombe » à l'arrivée d'un joueur (classe posée par lobby.ts). */
+.player-drop {
+  animation: token-drop 300ms var(--spring) backwards;
+}
+
+@keyframes token-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.92);
+  }
 }
 
 .swatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
   flex-shrink: 0;
 }
 
@@ -271,17 +330,18 @@ input::placeholder {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .badge {
   padding: 2px 8px;
-  border: 1px solid var(--border);
   border-radius: 999px;
+  background: var(--cream-shade);
   font-size: 11px;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--muted);
 }
 
 #btn-start {
@@ -298,14 +358,19 @@ input::placeholder {
   padding: 4px 2px;
   font-family: var(--font-display);
   font-size: 14px;
-  color: var(--text-muted);
+  font-weight: 700;
+  color: #fff;
+}
+
+#hud-stats {
+  color: var(--on-cobalt-muted);
 }
 
 .canvas-wrap {
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: var(--shadow-hard);
   line-height: 0;
 }
 
@@ -320,26 +385,71 @@ input::placeholder {
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgb(15 17 22 / 0.8);
+  background: rgb(23 34 63 / 0.6);
   z-index: 20;
 }
 
 .overlay-card {
   padding: 32px 40px;
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--cream);
+  border-radius: 20px;
+  box-shadow: var(--shadow-hard);
   text-align: center;
   display: grid;
   gap: 8px;
+  animation: screen-in 300ms var(--spring) both;
 }
 
 .overlay-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.overlay-card .hint {
+  color: var(--muted);
+}
+
+/* ----- Flash « GO ! » : purement décoratif, ne bloque jamais les inputs ----- */
+.go-flash {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.go-flash span {
+  font-family: var(--font-display);
+  font-size: clamp(3.5rem, 14vw, 6.5rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-shadow: 0 6px 0 var(--ink);
+  animation: go-pop 600ms var(--spring) both;
+}
+
+@keyframes go-pop {
+  0% {
+    opacity: 0;
+    transform: rotate(-2deg) scale(0.3);
+  }
+  25% {
+    opacity: 1;
+    transform: rotate(-2deg) scale(1.12);
+  }
+  55% {
+    opacity: 1;
+    transform: rotate(-2deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(-2deg) scale(1);
+  }
 }
 
 /* ----- Toast d'erreur ----- */
@@ -350,11 +460,13 @@ input::placeholder {
   transform: translateX(-50%);
   max-width: min(90vw, 420px);
   padding: 10px 16px;
-  background: var(--danger-bg);
-  border: 1px solid var(--danger-border);
-  border-radius: 8px;
-  color: var(--danger-text);
+  background: var(--cream);
+  border: 2px solid var(--bomb-red);
+  border-radius: 14px;
+  box-shadow: var(--shadow-hard-sm);
+  color: var(--ink);
   font-size: 14px;
+  font-weight: 600;
   z-index: 30;
 }
 
@@ -363,17 +475,44 @@ input::placeholder {
     padding: 24px 12px;
   }
   .room-code {
-    font-size: 1.8rem;
-    letter-spacing: 0.3em;
-    padding-left: calc(20px + 0.3em);
+    font-size: 1.9rem;
+    letter-spacing: 0.28em;
+    padding: 10px 20px 10px calc(20px + 0.28em);
   }
 }
 
+/* Reduced motion : fondus courts, sans translation ni rebond. L'enfoncement
+   des boutons reste (feedback direct à l'appui, pas une animation). */
 @media (prefers-reduced-motion: reduce) {
-  .logo::after {
-    animation: none;
+  .screen,
+  .overlay-card {
+    animation: fade-in 150ms ease both;
+  }
+  .player-drop {
+    animation: fade-in 150ms ease backwards;
+  }
+  .go-flash span {
+    animation: go-fade 400ms ease both;
   }
   .btn {
     transition: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes go-fade {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
   }
 }

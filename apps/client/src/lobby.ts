@@ -18,6 +18,9 @@ const ERROR_TEXT: Record<string, string> = {
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
 let toastTimer = 0;
+let goTimer = 0;
+// Joueurs déjà affichés dans la salle : seuls les nouveaux « tombent » (.player-drop).
+let knownPlayerIds = new Set<PlayerId>();
 
 // Parameters
 //   cb — callbacks déclenchés par les actions utilisateur (créer, rejoindre, lancer)
@@ -91,6 +94,7 @@ export function renderRoom(code: string, players: LobbyPlayer[], hostId: PlayerI
   list.textContent = '';
   players.forEach((p, i) => {
     const li = document.createElement('li');
+    if (!knownPlayerIds.has(p.id)) li.classList.add('player-drop');
     const swatch = document.createElement('span');
     swatch.className = 'swatch';
     swatch.style.background = PLAYER_COLORS[i % PLAYER_COLORS.length];
@@ -102,6 +106,7 @@ export function renderRoom(code: string, players: LobbyPlayer[], hostId: PlayerI
     if (p.id === selfId) li.append(makeBadge('toi'));
     list.append(li);
   });
+  knownPlayerIds = new Set(players.map((p) => p.id));
 
   const isHost = selfId === hostId;
   const canStart = players.length >= 2;
@@ -136,6 +141,23 @@ export function showError(code: string): void {
   toastTimer = window.setTimeout(() => {
     toast.hidden = true;
   }, 4000);
+}
+
+// Parameters
+//   (aucun)
+// What it does
+//   Affiche le flash « GO ! » plein écran au début de partie puis le masque
+//   après ~650 ms. Purement décoratif : pointer-events none et aria-hidden,
+//   il ne retarde ni ne masque jamais les inputs — la partie tourne dessous.
+// Output
+//   void
+export function showGoFlash(): void {
+  const flash = el('go-flash');
+  flash.hidden = false; // display none → grid : l'animation CSS redémarre
+  clearTimeout(goTimer);
+  goTimer = window.setTimeout(() => {
+    flash.hidden = true;
+  }, 650);
 }
 
 // Parameters

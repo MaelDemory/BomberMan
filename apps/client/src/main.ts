@@ -8,6 +8,7 @@ import {
   renderRoom,
   showError,
   showGameOver,
+  showGoFlash,
   showScreen,
   updateHud,
 } from './lobby';
@@ -58,6 +59,7 @@ function handleMsg(msg: ServerMsg): void {
       hideGameOver();
       view.start(players, selfId);
       showScreen('game');
+      showGoFlash(); // décoratif et non bloquant : la partie a déjà démarré côté serveur
       startPlaying();
       break;
     case 'snapshot':

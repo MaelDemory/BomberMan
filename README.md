@@ -1,10 +1,12 @@
-# Bomber Break 💣
+# Kablam! 💥
 
-Bomberman multijoueur dans le navigateur, pensé pour la pause-café : 2 à 4 joueurs, un code de partie à partager, trois minutes de match.
+Le party game qui explose, gratuit dans ton navigateur. Un Bomberman multijoueur en ligne : 2 à 4 joueurs, un code de partie à partager, trois minutes de match.
 
 **Jouer : https://bomberman-mael.fly.dev**
 
-L'un crée une partie et partage le code 4 lettres, les autres le saisissent pour rejoindre, l'hôte lance. Déplacement : flèches ou ZQSD/WASD · Bombe : espace.
+Crée une partie, partage le code 4 lettres, tes adversaires le saisissent pour rejoindre, l'hôte lance. Déplacement : flèches ou ZQSD/WASD · Bombe : espace.
+
+Un projet perso open source de [Maël Demory](https://github.com/MaelDemory).
 
 ## Stack
 

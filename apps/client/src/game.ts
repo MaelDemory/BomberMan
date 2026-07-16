@@ -31,8 +31,10 @@ const INPUT_HISTORY_MAX = 64; // ~3 s d'inputs conservés pour le rejeu
 const GHOST_BOMB_TTL_MS = 600; // durée de vie max d'une bombe fantôme non confirmée
 
 // Couleurs joueurs par ordre d'arrivée — mêmes valeurs que DESIGN.md,
-// partagées avec la liste DOM de la salle d'attente.
-export const PLAYER_COLORS = ['#45D4FF', '#FF5D8F', '#7DE84B', '#FFC53D'];
+// partagées avec la liste DOM de la salle d'attente. Hues choisies pour ne
+// jamais se confondre avec bombes (rouge), étincelles (jaune), blocs (orange)
+// ni murs (cobalt).
+export const PLAYER_COLORS = ['#00A9C0', '#F0509B', '#3DB94E', '#8353E2'];
 
 const DIR_VEC: Record<Dir, readonly [number, number]> = {
   up: [0, -1],
@@ -52,7 +54,7 @@ export interface GameView {
 //   sendInput — envoie un input daté (tick client) au serveur
 // What it does
 //   Crée l'application PixiJS et la boucle de rendu : les snapshots serveur
-//   sont bufferisés, le rendu à requestAnimationFrame se place ~100 ms dans
+//   sont bufferisés, le rendu à requestAnimationFrame se place ~75 ms dans
 //   le passé et interpole (lerp) les positions joueurs entre les deux
 //   snapshots encadrants ; grille, bombes, flammes et power-ups sont discrets
 //   et rendus sans interpolation. Tout est dessiné par code (Graphics).
@@ -63,9 +65,9 @@ export async function createGameView(
   sendInput: (tick: number, keys: InputState) => void
 ): Promise<GameView> {
   const app = new Application();
-  await app.init({ width: GRID_W * CELL, height: GRID_H * CELL, background: '#12141B', antialias: true });
+  await app.init({ width: GRID_W * CELL, height: GRID_H * CELL, background: '#FDF8EF', antialias: true });
   app.canvas.setAttribute('role', 'img');
-  app.canvas.setAttribute('aria-label', 'Aire de jeu Bomberman');
+  app.canvas.setAttribute('aria-label', 'Aire de jeu Kablam!');
   parent.appendChild(app.canvas);
 
   const gfx = new Graphics();
@@ -101,16 +103,17 @@ export async function createGameView(
         const py = y * CELL;
         const tile = state.grid[y * GRID_W + x];
         if (tile === Tile.Wall) {
-          gfx.rect(px, py, CELL, CELL).fill('#333B4D');
-          gfx.rect(px, py, CELL, 4).fill('#414B61');
-          gfx.rect(px, py + CELL - 4, CELL, 4).fill('#262D3C');
+          gfx.rect(px, py, CELL, CELL).fill('#2447C9');
+          gfx.rect(px, py, CELL, 4).fill('#5378F0');
+          gfx.rect(px, py + CELL - 4, CELL, 4).fill('#1A339E');
         } else if (tile === Tile.Soft) {
-          gfx.rect(px, py, CELL, CELL).fill('#161922');
-          gfx.roundRect(px + 3, py + 3, CELL - 6, CELL - 6, 4).fill('#8A5A33');
-          gfx.rect(px + 3, py + CELL / 2 - 1, CELL - 6, 2).fill('#6E4526');
-          gfx.rect(px + CELL / 2 - 1, py + 3, 2, CELL - 6).fill('#6E4526');
+          gfx.rect(px, py, CELL, CELL).fill('#F4EAD9');
+          gfx.roundRect(px + 3, py + 3, CELL - 6, CELL - 6, 4).fill('#E8933C');
+          gfx.rect(px + 4, py + 4, CELL - 8, 3).fill('#F6B563');
+          gfx.rect(px + 3, py + CELL / 2 - 1, CELL - 6, 2).fill('#C0722A');
+          gfx.rect(px + CELL / 2 - 1, py + 3, 2, CELL - 6).fill('#C0722A');
         } else {
-          gfx.rect(px, py, CELL, CELL).fill((x + y) % 2 === 0 ? '#161922' : '#181C26');
+          gfx.rect(px, py, CELL, CELL).fill((x + y) % 2 === 0 ? '#FDF8EF' : '#F4EAD9');
         }
       }
     }
@@ -121,8 +124,10 @@ export async function createGameView(
       if (pu.activeAt > state.tick) continue;
       const cx = pu.x * CELL + CELL / 2;
       const cy = pu.y * CELL + CELL / 2;
-      const col = pu.kind === 'bomb' ? '#FFC53D' : pu.kind === 'flame' ? '#FF7A45' : '#45D4FF';
-      gfx.roundRect(cx - 13, cy - 13, 26, 26, 7).fill('#0C0E13').stroke({ width: 2, color: col });
+      const col = pu.kind === 'bomb' ? '#17223F' : pu.kind === 'flame' ? '#EF3F36' : '#2F5BF0';
+      // Pastille crème posée sur le sol : ombre dure décalée puis surface.
+      gfx.roundRect(cx - 13, cy - 10, 26, 26, 7).fill({ color: '#17223F', alpha: 0.18 });
+      gfx.roundRect(cx - 13, cy - 13, 26, 26, 7).fill('#FFFDF7').stroke({ width: 2, color: '#17223F' });
       if (pu.kind === 'bomb') {
         gfx.circle(cx, cy, 7).fill(col);
       } else if (pu.kind === 'flame') {
@@ -139,14 +144,14 @@ export async function createGameView(
       const urgency = 1 - Math.min(Math.max(bomb.explodeAt - state.tick, 0) / BOMB_FUSE_TICKS, 1);
       const period = 320 - 240 * urgency;
       const r = 13 * (1 + 0.12 * Math.sin((now / period) * Math.PI * 2));
-      gfx.circle(cx, cy, r).fill('#10131A').stroke({ width: 2.5, color: urgency > 0.7 ? '#FF5D5D' : '#FFB300' });
-      gfx.circle(cx - r * 0.3, cy - r * 0.3, r * 0.22).fill('#3A4256');
+      gfx.circle(cx, cy, r).fill('#17223F').stroke({ width: 2.5, color: urgency > 0.7 ? '#EF3F36' : '#FFD23F' });
+      gfx.circle(cx - r * 0.3, cy - r * 0.3, r * 0.22).fill('#3D4C74');
       gfx.circle(cx + r * 0.45, cy - r * 0.8, 3).fill('#FFD23F');
     }
     for (const f of state.flames) {
       const px = f.x * CELL;
       const py = f.y * CELL;
-      gfx.roundRect(px + 2, py + 2, CELL - 4, CELL - 4, 6).fill('#FF7A45');
+      gfx.roundRect(px + 2, py + 2, CELL - 4, CELL - 4, 6).fill('#EF3F36');
       gfx.roundRect(px + 9, py + 9, CELL - 18, CELL - 18, 5).fill('#FFD23F');
     }
   }
@@ -167,15 +172,15 @@ export async function createGameView(
         dir = local.dir;
       }
       const bodyAlpha = cur.alive ? 1 : 0.35;
-      const color = cur.alive ? colorOf(pa.id) : '#5A6170';
+      const color = cur.alive ? colorOf(pa.id) : '#9AA0AE';
 
       if (pa.id === selfId && cur.alive) {
-        gfx.circle(x, y, 17).stroke({ width: 2, color: '#EDEEF2', alpha: 0.7 });
+        gfx.circle(x, y, 17).stroke({ width: 2.5, color: '#2F5BF0', alpha: 0.9 });
       }
-      gfx.circle(x, y, 14).fill({ color, alpha: bodyAlpha }).stroke({ width: 2, color: '#0C0E13', alpha: bodyAlpha });
+      gfx.circle(x, y, 14).fill({ color, alpha: bodyAlpha }).stroke({ width: 2, color: '#17223F', alpha: bodyAlpha });
       const [dx, dy] = DIR_VEC[dir];
-      gfx.circle(x + dx * 5 - dy * 4, y + dy * 5 + dx * 4, 2.5).fill({ color: '#10131A', alpha: bodyAlpha });
-      gfx.circle(x + dx * 5 + dy * 4, y + dy * 5 - dx * 4, 2.5).fill({ color: '#10131A', alpha: bodyAlpha });
+      gfx.circle(x + dx * 5 - dy * 4, y + dy * 5 + dx * 4, 2.5).fill({ color: '#17223F', alpha: bodyAlpha });
+      gfx.circle(x + dx * 5 + dy * 4, y + dy * 5 - dx * 4, 2.5).fill({ color: '#17223F', alpha: bodyAlpha });
 
       const label = labels.get(pa.id);
       if (label) {
@@ -231,8 +236,8 @@ export async function createGameView(
     for (const g of ghosts) {
       const cx = g.tx * CELL + CELL / 2;
       const cy = g.ty * CELL + CELL / 2;
-      gfx.circle(cx, cy, 13).fill('#10131A').stroke({ width: 2.5, color: '#FFB300' });
-      gfx.circle(cx - 4, cy - 4, 2.8).fill('#3A4256');
+      gfx.circle(cx, cy, 13).fill('#17223F').stroke({ width: 2.5, color: '#FFD23F' });
+      gfx.circle(cx - 4, cy - 4, 2.8).fill('#3D4C74');
       gfx.circle(cx + 6, cy - 10, 3).fill('#FFD23F');
     }
   }
@@ -279,10 +284,12 @@ export async function createGameView(
         const label = new Text({
           text: p.name,
           style: {
-            fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+            fontFamily: 'ui-rounded, "SF Pro Rounded", system-ui, sans-serif',
             fontSize: 12,
-            fontWeight: '700',
+            fontWeight: '800',
             fill: PLAYER_COLORS[i % PLAYER_COLORS.length],
+            // Contour encre : garde le pseudo lisible sur le damier crème.
+            stroke: { color: '#17223F', width: 3 },
           },
         });
         label.anchor.set(0.5, 1);
