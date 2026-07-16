@@ -214,6 +214,34 @@ export function hideGameOver(): void {
 }
 
 // Parameters
+//   entries — classement général renvoyé par GET /scores (déjà trié)
+// What it does
+//   Remplit le tableau des scores de l'accueil : rang, pseudo, victoires,
+//   parties et % de victoire. Liste vide ⇒ message d'invitation.
+// Output
+//   void
+export function renderLeaderboard(entries: { name: string; wins: number; games: number }[]): void {
+  const list = el('score-list');
+  list.textContent = '';
+  el('score-empty').hidden = entries.length > 0;
+  entries.forEach((e, i) => {
+    const li = document.createElement('li');
+    const rank = document.createElement('span');
+    rank.className = 'score-rank';
+    rank.textContent = String(i + 1);
+    const name = document.createElement('span');
+    name.className = 'player-name';
+    name.textContent = e.name;
+    const stats = document.createElement('span');
+    stats.className = 'score-stats';
+    const pct = e.games > 0 ? Math.round((e.wins / e.games) * 100) : 0;
+    stats.textContent = `${e.wins} V · ${e.games} parties · ${pct} %`;
+    li.append(rank, name, stats);
+    list.append(li);
+  });
+}
+
+// Parameters
 //   state — dernier snapshot serveur
 //   selfId — identifiant du joueur local
 // What it does

@@ -4,6 +4,15 @@
 app = "bomberman-mael"
 primary_region = "cdg"
 
+[env]
+  DATA_DIR = "/data"
+
+# Volume persistant pour le classement général (scores.json).
+# Créé une fois avec : fly volumes create bomber_data --region cdg --size 1
+[mounts]
+  source = "bomber_data"
+  destination = "/data"
+
 [http_service]
   internal_port = 8080
   force_https = true

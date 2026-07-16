@@ -6,6 +6,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { parseClientMsg, type PlayerId, type ServerMsg } from '@bomber/shared';
 import type { Room } from './room';
 import { createRoom, getRoom } from './rooms';
+import { ScoreStore } from './scores';
 
 type ErrorCode = Extract<ServerMsg, { type: 'error' }>['code'];
 
@@ -50,7 +51,7 @@ async function serveStatic(pathname: string, res: ServerResponse): Promise<void>
   }
 }
 
-function handleRequest(req: IncomingMessage, res: ServerResponse): void {
+function handleRequest(req: IncomingMessage, res: ServerResponse, scores: ScoreStore): void {
   const url = new URL(req.url ?? '/', 'http://localhost');
   if (url.pathname === '/health') {
     res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
@@ -59,6 +60,11 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
   }
   if (req.method !== 'GET') {
     notFound(res);
+    return;
+  }
+  if (url.pathname === '/scores') {
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(scores.top(20)));
     return;
   }
   void serveStatic(url.pathname, res);
@@ -71,16 +77,18 @@ function sendError(ws: WebSocket, code: ErrorCode): void {
 }
 
 // Parameters
-//   None
+//   opts.dataDir — dossier des données persistantes (défaut : $DATA_DIR ou ./data)
 // What it does
-//   Construit le serveur HTTP du jeu : /health, fichiers statiques du client
-//   buildé, upgrade WebSocket sur /ws uniquement, dispatch des messages
-//   clients validés par parseClientMsg vers les rooms, et heartbeat ping/pong
-//   (terminate après HEARTBEAT_MS sans pong). Ne se met pas en écoute.
+//   Construit le serveur HTTP du jeu : /health, /scores (classement général),
+//   fichiers statiques du client buildé, upgrade WebSocket sur /ws uniquement,
+//   dispatch des messages clients validés par parseClientMsg vers les rooms,
+//   et heartbeat ping/pong (terminate après HEARTBEAT_MS sans pong).
+//   Ne se met pas en écoute.
 // Output
 //   http.Server prêt pour listen() ; close() arrête aussi le heartbeat
-export function createGameServer(): Server {
-  const server = createServer(handleRequest);
+export function createGameServer(opts: { dataDir?: string } = {}): Server {
+  const scores = new ScoreStore(opts.dataDir ?? process.env.DATA_DIR ?? path.join(process.cwd(), 'data'));
+  const server = createServer((req, res) => handleRequest(req, res, scores));
   // maxPayload : le plus gros message client légitime (input) fait < 200 octets.
   const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
   const alive = new Map<WebSocket, boolean>();
@@ -110,7 +118,7 @@ export function createGameServer(): Server {
         switch (msg.type) {
           case 'create': {
             if (room) return;
-            const created = createRoom();
+            const created = createRoom((participants, winnerId) => scores.recordGame(participants, winnerId));
             const result = created.join(ws, msg.name);
             if ('id' in result) {
               room = created;

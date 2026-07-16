@@ -5,6 +5,7 @@ import { trackInput, type InputTracker } from './input';
 import {
   hideGameOver,
   initLobby,
+  renderLeaderboard,
   renderRoom,
   showError,
   showGameOver,
@@ -12,6 +13,22 @@ import {
   showScreen,
   updateHud,
 } from './lobby';
+
+// Parameters
+//   (aucun)
+// What it does
+//   Charge le classement général (GET /scores) et le rend sur l'accueil.
+//   Toute erreur réseau laisse simplement le tableau vide.
+// Output
+//   Promise<void>
+async function loadScores(): Promise<void> {
+  try {
+    const res = await fetch('/scores');
+    if (res.ok) renderLeaderboard(await res.json());
+  } catch {
+    // Hors ligne ou serveur froid : le classement reste vide, sans bruit.
+  }
+}
 
 let send: (msg: ClientMsg) => void = () => {};
 let view: GameView;
@@ -97,6 +114,7 @@ async function main(): Promise<void> {
     onAddBot: (difficulty) => send({ type: 'addBot', difficulty }),
     onRemoveBot: (botId) => send({ type: 'removeBot', botId }),
   });
+  void loadScores();
   view = await createGameView(el('canvas-wrap'), (tick, keys) => send({ type: 'input', tick, keys }));
   const net = connect(handleMsg, () => {
     stopPlaying();

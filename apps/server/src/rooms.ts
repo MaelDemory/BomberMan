@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import { ROOM_CODE_LENGTH } from '@bomber/shared';
-import { Room } from './room';
+import { Room, type GameEndHandler } from './room';
 
 // Alphabet sans I ni O pour éviter les confusions à la lecture d'un code.
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -19,15 +19,15 @@ function generateCode(): string {
 }
 
 // Parameters
-//   None
+//   onGameEnd — notifié à chaque fin de partie (enregistrement des scores)
 // What it does
 //   Crée une room avec un code unique de 4 lettres et l'enregistre ; la room
 //   se retire elle-même du registre quand son dernier joueur part.
 // Output
 //   La Room créée
-export function createRoom(): Room {
+export function createRoom(onGameEnd: GameEndHandler): Room {
   const code = generateCode();
-  const room = new Room(code, () => rooms.delete(code));
+  const room = new Room(code, () => rooms.delete(code), onGameEnd);
   rooms.set(code, room);
   return room;
 }

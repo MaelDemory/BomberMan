@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { WebSocket } from 'ws';
+import type { Participant } from './scores';
 import {
   computeBotInput,
   createBotBrain,
@@ -54,11 +55,15 @@ const BOT_NAMES = ['Bim', 'Bam', 'Boum'];
 
 // Une partie et son lobby : machine à états lobby → running → lobby.
 // Le serveur est autoritaire — les clients n'envoient que des inputs.
+export type GameEndHandler = (participants: Participant[], winnerId: PlayerId | null) => void;
+
 export class Room {
   readonly code: string;
   private readonly onEmpty: () => void;
+  private readonly onGameEnd: GameEndHandler;
   private clients: Client[] = [];
   private bots: Bot[] = [];
+  private participants: Participant[] = []; // figés au start (les départs en cours de partie comptent)
   private hostId: PlayerId = '';
   private phase: 'lobby' | 'running' = 'lobby';
   private state: GameState | null = null;
@@ -66,9 +71,10 @@ export class Room {
   private timer: NodeJS.Timeout | null = null;
   private overTicksLeft = -1;
 
-  constructor(code: string, onEmpty: () => void) {
+  constructor(code: string, onEmpty: () => void, onGameEnd: GameEndHandler = () => {}) {
     this.code = code;
     this.onEmpty = onEmpty;
+    this.onGameEnd = onGameEnd;
   }
 
   // Parameters
@@ -113,6 +119,10 @@ export class Room {
       this.clients.map((c) => [c.id, { keys: EMPTY_INPUT, buffer: new Map(), lastApplied: -1 }])
     );
     for (const bot of this.bots) bot.brain = createBotBrain(randomBytes(4).readUInt32BE(0));
+    this.participants = [
+      ...this.clients.map((c) => ({ id: c.id, name: c.name, bot: false })),
+      ...this.bots.map((b) => ({ id: b.id, name: b.name, bot: true })),
+    ];
     this.phase = 'running';
     this.overTicksLeft = -1;
     this.broadcast({ type: 'start', seed });
@@ -238,6 +248,7 @@ export class Room {
       if (this.overTicksLeft === -1) {
         this.overTicksLeft = OVER_EXTRA_TICKS;
         this.broadcast({ type: 'gameover', winner: this.state.winner });
+        this.onGameEnd(this.participants, this.state.winner);
       } else if (--this.overTicksLeft <= 0) {
         this.backToLobby();
       }

@@ -1,5 +1,8 @@
+import { mkdtempSync } from 'node:fs';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 import { createGameServer } from '../src/server';
@@ -8,7 +11,8 @@ let servers: Server[] = [];
 let clients: TestClient[] = [];
 
 async function startServer(): Promise<number> {
-  const server = createGameServer();
+  // dataDir jetable : les tests ne doivent jamais écrire de scores dans le repo.
+  const server = createGameServer({ dataDir: mkdtempSync(path.join(tmpdir(), 'bomber-test-')) });
   servers.push(server);
   await new Promise<void>((resolve) => server.listen(0, resolve));
   return (server.address() as AddressInfo).port;
@@ -200,6 +204,14 @@ describe('serveur de jeu', () => {
     host.send({ type: 'start' }); // seul : ignoré
     await sleep(300);
     expect(host.pendingCount()).toBe(0);
+  });
+
+  it('GET /scores répond un classement JSON (vide au départ)', async () => {
+    const port = await startServer();
+    const res = await fetch(`http://127.0.0.1:${port}/scores`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('application/json');
+    expect(await res.json()).toEqual([]);
   });
 
   it('les messages malformés sont ignorés sans fermer la connexion', async () => {
