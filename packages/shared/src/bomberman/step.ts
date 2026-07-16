@@ -13,7 +13,7 @@ import {
   Tile,
   TILE,
 } from './constants';
-import type { BombState, GameState, PlayerState, PowerupKind } from './state';
+import type { BombState, Dir, GameState, PlayerState, PowerupKind } from './state';
 import { tileAt } from './state';
 
 const POWERUP_KINDS: readonly PowerupKind[] = ['bomb', 'flame', 'speed'];
@@ -204,6 +204,37 @@ function explodeDueBombs(state: GameState): void {
   }
 
   state.bombs = state.bombs.filter((b) => !exploded.has(b));
+}
+
+export interface PredictedPos {
+  x: number;
+  y: number;
+  dir: Dir;
+}
+
+// Parameters
+//   state — état de référence (non modifié) : grille et bombes pour les collisions
+//   playerId — joueur à déplacer
+//   pos — position/orientation de départ (celle prédite, pas celle du snapshot)
+//   input — touches du tick
+// What it does
+//   Calcule le déplacement d'un seul joueur pour un tick avec exactement la même
+//   logique que step() (glissement, aide de coin, bombes traversables), sans rien
+//   d'autre : pas de bombe posée, pas de mort. Sert à la prédiction côté client ;
+//   le serveur reste autoritaire.
+// Output
+//   Nouvelle position/orientation, ou null si le joueur est absent ou mort
+export function predictMove(
+  state: GameState,
+  playerId: PlayerId,
+  pos: PredictedPos,
+  input: InputState
+): PredictedPos | null {
+  const src = state.players.find((q) => q.id === playerId);
+  if (!src || !src.alive) return null;
+  const p: PlayerState = { ...src, x: pos.x, y: pos.y, dir: pos.dir };
+  movePlayer(state, p, input);
+  return { x: p.x, y: p.y, dir: p.dir };
 }
 
 // Parameters

@@ -161,8 +161,11 @@ describe('protocole — validation des messages', () => {
       roomCode: 'ABCD',
       name: 'x',
     });
-    expect(parseClientMsg('{"type":"input","keys":{"up":true,"junk":1}}')).toEqual({
+    expect(parseClientMsg('{"type":"input","keys":{"up":true}}')).toBeNull(); // tick requis
+    expect(parseClientMsg('{"type":"input","tick":-1,"keys":{"up":true}}')).toBeNull();
+    expect(parseClientMsg('{"type":"input","tick":3,"keys":{"up":true,"junk":1}}')).toEqual({
       type: 'input',
+      tick: 3,
       keys: { up: true, down: false, left: false, right: false, bomb: false },
     });
   });

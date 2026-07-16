@@ -12,8 +12,6 @@ import {
   updateHud,
 } from './lobby';
 
-const INPUT_RESEND_MS = 100;
-
 let send: (msg: ClientMsg) => void = () => {};
 let view: GameView;
 let selfId: PlayerId = '';
@@ -22,24 +20,18 @@ let players: LobbyPlayer[] = [];
 let hostId: PlayerId = '';
 let playing = false;
 let input: InputTracker | null = null;
-let resendTimer = 0;
 
 function startPlaying(): void {
   playing = true;
-  // Envoi de l'état des touches à chaque changement + réémission périodique
-  // (le serveur applique le dernier état connu ; la réémission couvre les
-  // messages perdus ou un serveur redémarré en dev).
-  input = trackInput((keys) => send({ type: 'input', keys }));
-  resendTimer = window.setInterval(() => {
-    if (input) send({ type: 'input', keys: input.get() });
-  }, INPUT_RESEND_MS);
+  // Les touches alimentent la prédiction locale ; c'est la boucle de prédiction
+  // (dans la vue) qui envoie un input daté par tick au serveur.
+  input = trackInput((keys) => view.setInput(keys));
 }
 
 function stopPlaying(): void {
   playing = false;
   input?.stop();
   input = null;
-  clearInterval(resendTimer);
 }
 
 function handleMsg(msg: ServerMsg): void {
@@ -69,7 +61,7 @@ function handleMsg(msg: ServerMsg): void {
       startPlaying();
       break;
     case 'snapshot':
-      view.pushSnapshot(msg.state);
+      view.pushSnapshot(msg.state, msg.acks[selfId] ?? -1);
       updateHud(msg.state, selfId);
       break;
     case 'gameover': {
@@ -101,7 +93,7 @@ async function main(): Promise<void> {
     onJoin: (code, name) => send({ type: 'join', roomCode: code, name }),
     onStart: () => send({ type: 'start' }),
   });
-  view = await createGameView(el('canvas-wrap'));
+  view = await createGameView(el('canvas-wrap'), (tick, keys) => send({ type: 'input', tick, keys }));
   const net = connect(handleMsg, () => {
     stopPlaying();
     showError('connection_lost');

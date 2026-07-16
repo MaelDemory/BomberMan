@@ -13,14 +13,17 @@ export type ClientMsg =
   | { type: 'create'; name: string }
   | { type: 'join'; roomCode: string; name: string }
   | { type: 'start' }
-  | { type: 'input'; keys: InputState }
+  // tick = numéro de tick LOCAL du client (croissant) ; le serveur acquitte le
+  // dernier tick consommé dans chaque snapshot, ce qui permet au client de
+  // rejouer ses inputs non acquittés (réconciliation exacte, sans glissement).
+  | { type: 'input'; tick: number; keys: InputState }
   | { type: 'leave' };
 
 export type ServerMsg =
   | { type: 'joined'; playerId: PlayerId; roomCode: string; players: LobbyPlayer[]; hostId: PlayerId }
   | { type: 'lobby'; players: LobbyPlayer[]; hostId: PlayerId }
   | { type: 'start'; seed: number }
-  | { type: 'snapshot'; state: GameState }
+  | { type: 'snapshot'; state: GameState; acks: Record<PlayerId, number> }
   | { type: 'gameover'; winner: PlayerId | null }
   | { type: 'error'; code: 'room_not_found' | 'room_full' | 'game_in_progress' };
 
@@ -82,7 +85,8 @@ export function parseClientMsg(raw: string): ClientMsg | null {
       return { type: 'start' };
     case 'input': {
       const keys = cleanKeys(data.keys);
-      return keys ? { type: 'input', keys } : null;
+      const tick = typeof data.tick === 'number' && Number.isInteger(data.tick) && data.tick >= 0 ? data.tick : null;
+      return keys && tick !== null ? { type: 'input', tick, keys } : null;
     }
     case 'leave':
       return { type: 'leave' };

@@ -68,11 +68,11 @@ flowchart TD
 ## Contracts
 - **Simulation (`@bomber/shared`)** : `step(state: GameState, inputs: Map<PlayerId, Input>): GameState` — fonction pure, déterministe, à pas fixe (tick = 50 ms / 20 Hz). Bomberman est entier par nature (grille) : pas de flottants dans l'état. *Invariant à préserver pour Worms : tout flottant futur passera en virgule fixe.*
 - **Protocole (JSON sur WebSocket, v1)** — source de vérité : `packages/shared/src/protocol/messages.ts` :
-  - Client → serveur : `{type:"create", name}`, `{type:"join", roomCode, name}`, `{type:"start"}` (hôte uniquement), `{type:"input", keys}` (état des touches, pas d'événements), `{type:"leave"}`.
-  - Serveur → client : `{type:"joined", playerId, roomCode, players, hostId}`, `{type:"lobby", players, hostId}`, `{type:"start", seed}`, `{type:"snapshot", state}` (état complet à 20 Hz, tick inclus dans state — suffisant pour un état de quelques Ko ; delta-encoding = optimisation future), `{type:"gameover", winner}`, `{type:"error", code}`.
+  - Client → serveur : `{type:"create", name}`, `{type:"join", roomCode, name}`, `{type:"start"}` (hôte uniquement), `{type:"input", tick, keys}` (état des touches daté du tick client, un par tick de prédiction), `{type:"leave"}`.
+  - Serveur → client : `{type:"joined", playerId, roomCode, players, hostId}`, `{type:"lobby", players, hostId}`, `{type:"start", seed}`, `{type:"snapshot", state, acks}` (état complet à 20 Hz + dernier tick d'input consommé par joueur ; delta-encoding = optimisation future), `{type:"gameover", winner}`, `{type:"error", code}`.
   - Tout message entrant est validé côté serveur avant usage ; message inconnu ou malformé → ignoré + log.
 - **Rooms** : code 4 lettres généré serveur, 2-4 joueurs, démarrage par l'hôte, room détruite quand vide. Serveur = source de vérité unique ; le client n'envoie que des inputs.
-- **Client** : rendu à requestAnimationFrame, interpolation entre les 2 derniers snapshots (retard ~100 ms). Pas de prédiction locale en v1.
+- **Client** : rendu à requestAnimationFrame. Le **joueur local est prédit localement** (`predictMove` de la sim partagée, même logique de mouvement que `step()`, garantie par un test de parité) avec réconciliation **par rejeu d'inputs** : le serveur consomme un input client par tick et acquitte le dernier tick consommé dans chaque snapshot ; le client repart de la position autoritaire et rejoue ses inputs non acquittés avec la même sim — rejeu exact dans le cas nominal (aucune correction visible, aucune dérive possible) ; les bombes s'affichent en « fantôme » dès l'appui. Les autres joueurs sont interpolés entre les 2 snapshots encadrants sur le **temps serveur estimé** (décalage horloge lissé par EMA — la gigue d'arrivée réseau n'affecte pas la vitesse à l'écran), avec ~75 ms de retard. Le rendu du joueur local est lui-même lissé entre deux pas de prédiction (le 20 Hz de la sim n'est jamais rendu brut en 60+ fps).
 - **HTTP** : `GET /` sert le client buildé ; `GET /health` pour la plateforme ; upgrade WebSocket sur `/ws`. Un seul port.
 
 ## Cost / operations estimate
@@ -87,7 +87,7 @@ Hypothèses : ≤ ~10 rooms simultanées, joueurs en Europe (latence 20-60 ms), 
 
 ## Risks
 - **Node mono-thread** : un tick coûteux bloque toutes les rooms. Négligeable pour Bomberman (grille 15×13, ≤ 4 joueurs) ; à resurveiller pour la physique Worms.
-- **Pas de prédiction client** : les déplacements ont ~½ RTT + interpolation de latence perçue. Acceptable en Europe ; si ressenti "mou", la prédiction s'ajoute côté client sans changer le protocole (la sim partagée est déjà là — c'est le but de l'architecture).
+- **Prédiction client (ajoutée en v1.1 après retour utilisateur "latence ressentie")** : le joueur local est prédit sans changement de protocole, comme prévu par l'architecture. Divergences possibles (bombe adverse posée sur le chemin pendant le vol du snapshot) corrigées par la réconciliation ; léger rubber-banding possible en cas de grosse perte de paquets.
 - **Snapshots complets JSON** : bande passante ~quelques Ko × 20 Hz × joueurs. Trivial en v1 ; delta/binaire seulement si mesure le justifie.
 - **Proxy d'entreprise** : WebSocket parfois filtré ; mitigé par WSS sur 443 (défaut Fly/Railway). À tester tôt depuis le réseau Arjo.
 - **Réutilisation Worms** : risque de sur-généraliser `engine/` avant d'avoir le second jeu. Règle : `engine/` ne reçoit que ce que Bomberman utilise réellement ; la généralisation se fera à l'arrivée de Worms.

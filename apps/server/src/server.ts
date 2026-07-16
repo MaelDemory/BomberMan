@@ -138,7 +138,7 @@ export function createGameServer(): Server {
             if (room && playerId) room.start(playerId);
             break;
           case 'input':
-            if (room && playerId) room.setInput(playerId, msg.keys);
+            if (room && playerId) room.setInput(playerId, msg.tick, msg.keys);
             break;
           case 'leave':
             if (room && playerId) room.leave(playerId);

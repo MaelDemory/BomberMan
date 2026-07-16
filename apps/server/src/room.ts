@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { WebSocket } from 'ws';
 import {
   createGame,
+  EMPTY_INPUT,
   MAX_PLAYERS,
   step,
   TICK_MS,
@@ -15,6 +16,19 @@ import {
 // Ticks joués après la fin de partie pour laisser les flammes finales
 // se consumer à l'écran avant le retour au lobby.
 const OVER_EXTRA_TICKS = 60;
+
+// Rattrapage : si un client a plus d'inputs en attente que ça (dérive d'horloge,
+// onglet figé puis rafale), on saute directement aux plus récents.
+const MAX_INPUT_LEAD = 6;
+
+// File d'inputs d'un joueur : un input par tick CLIENT, consommés un par tick
+// serveur ; lastApplied est acquitté dans chaque snapshot pour permettre au
+// client de rejouer ses inputs non encore pris en compte.
+interface InputFeed {
+  keys: InputState; // dernières touches appliquées (réutilisées si la file est vide)
+  buffer: Map<number, InputState>;
+  lastApplied: number;
+}
 
 export type JoinError = 'room_full' | 'game_in_progress';
 
@@ -33,7 +47,7 @@ export class Room {
   private hostId: PlayerId = '';
   private phase: 'lobby' | 'running' = 'lobby';
   private state: GameState | null = null;
-  private inputs: Record<PlayerId, InputState> = {};
+  private feeds = new Map<PlayerId, InputFeed>();
   private timer: NodeJS.Timeout | null = null;
   private overTicksLeft = -1;
 
@@ -79,7 +93,9 @@ export class Room {
     if (playerId !== this.hostId || this.phase !== 'lobby' || this.clients.length < 2) return;
     const seed = randomBytes(4).readUInt32BE(0);
     this.state = createGame(seed, this.clients.map((c) => c.id));
-    this.inputs = {};
+    this.feeds = new Map(
+      this.clients.map((c) => [c.id, { keys: EMPTY_INPUT, buffer: new Map(), lastApplied: -1 }])
+    );
     this.phase = 'running';
     this.overTicksLeft = -1;
     this.broadcast({ type: 'start', seed });
@@ -88,14 +104,33 @@ export class Room {
 
   // Parameters
   //   playerId — joueur émetteur
+  //   tick — numéro de tick client de cet input (croissant)
   //   keys — état des touches validé par parseClientMsg
   // What it does
-  //   Mémorise le dernier état de touches connu du joueur ; il sera appliqué
-  //   à chaque tick jusqu'au prochain message input.
+  //   Range l'input dans la file du joueur, indexé par tick client. La file est
+  //   bornée : seuls les inputs les plus récents sont conservés.
   // Output
   //   None
-  setInput(playerId: PlayerId, keys: InputState): void {
-    this.inputs[playerId] = keys;
+  setInput(playerId: PlayerId, tick: number, keys: InputState): void {
+    const feed = this.feeds.get(playerId);
+    if (!feed || tick <= feed.lastApplied) return;
+    feed.buffer.set(tick, keys);
+    if (feed.buffer.size > 32) {
+      const ticks = [...feed.buffer.keys()].sort((a, b) => a - b);
+      for (const t of ticks.slice(0, ticks.length - 16)) feed.buffer.delete(t);
+    }
+  }
+
+  // Avance la file d'un joueur d'un tick client : consomme le plus ancien input
+  // en attente (ou saute aux plus récents si le retard dépasse MAX_INPUT_LEAD) ;
+  // file vide ⇒ les dernières touches connues restent appliquées.
+  private consumeFeed(feed: InputFeed): void {
+    const pending = [...feed.buffer.keys()].filter((t) => t > feed.lastApplied).sort((a, b) => a - b);
+    if (pending.length === 0) return;
+    const next = pending.length > MAX_INPUT_LEAD ? pending[pending.length - MAX_INPUT_LEAD] : pending[0];
+    feed.keys = feed.buffer.get(next)!;
+    feed.lastApplied = next;
+    for (const t of pending) if (t <= next) feed.buffer.delete(t);
   }
 
   // Parameters
@@ -110,7 +145,7 @@ export class Room {
     const idx = this.clients.findIndex((c) => c.id === playerId);
     if (idx === -1) return;
     this.clients.splice(idx, 1);
-    delete this.inputs[playerId];
+    this.feeds.delete(playerId);
     if (this.state) {
       const player = this.state.players.find((p) => p.id === playerId);
       if (player) player.alive = false;
@@ -131,8 +166,15 @@ export class Room {
     // entier (toutes les rooms) : on sacrifie la partie, pas le serveur.
     try {
       if (!this.state) return;
-      this.state = step(this.state, this.inputs);
-      this.broadcast({ type: 'snapshot', state: this.state });
+      const inputs: Record<PlayerId, InputState> = {};
+      const acks: Record<PlayerId, number> = {};
+      for (const [id, feed] of this.feeds) {
+        this.consumeFeed(feed);
+        inputs[id] = feed.keys;
+        acks[id] = feed.lastApplied;
+      }
+      this.state = step(this.state, inputs);
+      this.broadcast({ type: 'snapshot', state: this.state, acks });
       if (this.state.phase !== 'over') return;
       if (this.overTicksLeft === -1) {
         this.overTicksLeft = OVER_EXTRA_TICKS;
@@ -150,7 +192,7 @@ export class Room {
     this.stopLoop();
     this.phase = 'lobby';
     this.state = null;
-    this.inputs = {};
+    this.feeds = new Map();
     this.overTicksLeft = -1;
     this.broadcast({ type: 'lobby', players: this.lobbyPlayers(), hostId: this.hostId });
   }
