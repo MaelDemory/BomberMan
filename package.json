@@ -1,0 +1,20 @@
+{
+  "name": "bomberman",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n server,client \"npm -w apps/server run dev\" \"npm -w apps/client run dev\"",
+    "build": "npm -w apps/client run build && npm -w apps/server run build",
+    "start": "node apps/server/dist/index.cjs",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.6.3"
+  }
+}

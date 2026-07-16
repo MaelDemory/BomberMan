@@ -1,0 +1,9 @@
+# Sans ces exclusions, COPY . . écraserait le node_modules Linux installé
+# par npm ci avec les binaires macOS de l'hôte (esbuild, etc.).
+node_modules
+**/node_modules
+**/dist
+.git
+.claude
+Dockerfile
+fly.toml

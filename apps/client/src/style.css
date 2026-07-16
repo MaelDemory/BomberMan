@@ -1,0 +1,379 @@
+/* Tokens — source de vérité : DESIGN.md */
+:root {
+  --bg: #0f1116;
+  --surface: #171a22;
+  --surface-raised: #1e222d;
+  --border: #2a2f3c;
+  --text: #edeef2;
+  --text-muted: #9aa3b2;
+  --accent: #ffb300;
+  --accent-hover: #ffc533;
+  --accent-ink: #1a1206;
+  --danger-bg: #2a1215;
+  --danger-border: #6b2a2f;
+  --danger-text: #ff9c9c;
+  --font-display: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% -20%, #1a1e29 0%, var(--bg) 55%) var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 16px;
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 380px;
+  gap: 16px;
+}
+
+.screen-game {
+  max-width: 600px;
+  gap: 8px;
+}
+
+/* ----- Accueil ----- */
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.logo {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 6vw, 2.4rem);
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+
+.logo-accent {
+  color: var(--accent);
+}
+
+/* Signature "mèche" : trait pointillé amber animé */
+.logo::after {
+  content: '';
+  display: block;
+  height: 3px;
+  margin-top: 10px;
+  background: repeating-linear-gradient(90deg, var(--accent) 0 10px, transparent 10px 16px);
+  animation: fuse 1.2s linear infinite;
+}
+
+@keyframes fuse {
+  from { background-position-x: 0; }
+  to { background-position-x: 16px; }
+}
+
+.tagline {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.panel {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+input {
+  width: 100%;
+  padding: 10px 12px;
+  background: #0c0e13;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+}
+
+input::placeholder {
+  color: #5c6373;
+}
+
+.code-input {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  text-align: center;
+  letter-spacing: 0.4em;
+}
+
+.join-row {
+  display: flex;
+  gap: 8px;
+}
+
+.join-row .code-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ----- Boutons ----- */
+.btn {
+  padding: 11px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn-primary:disabled {
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--surface-raised);
+  border-color: var(--text-muted);
+}
+
+.hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ----- Salle d'attente ----- */
+.room-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.room-code {
+  padding: 12px 20px 12px calc(20px + 0.45em);
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 700;
+  letter-spacing: 0.45em;
+  color: var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  user-select: all;
+}
+
+.player-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.player-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.player-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.badge {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+#btn-start {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* ----- Jeu ----- */
+.hud {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 4px 2px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.canvas-wrap {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(15 17 22 / 0.8);
+  z-index: 20;
+}
+
+.overlay-card {
+  padding: 32px 40px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-align: center;
+  display: grid;
+  gap: 8px;
+}
+
+.overlay-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+/* ----- Toast d'erreur ----- */
+.toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(90vw, 420px);
+  padding: 10px 16px;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  border-radius: 8px;
+  color: var(--danger-text);
+  font-size: 14px;
+  z-index: 30;
+}
+
+@media (max-width: 480px) {
+  .shell {
+    padding: 24px 12px;
+  }
+  .room-code {
+    font-size: 1.8rem;
+    letter-spacing: 0.3em;
+    padding-left: calc(20px + 0.3em);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo::after {
+    animation: none;
+  }
+  .btn {
+    transition: none;
+  }
+}

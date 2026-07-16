@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Bomber Break</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="toast" class="toast" role="alert" hidden></div>
+
+    <main class="shell">
+      <section id="screen-home" class="screen">
+        <header class="brand">
+          <svg class="logo-mark" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
+            <circle cx="20" cy="26" r="14" fill="#10131A" stroke="#FFB300" stroke-width="2.5" />
+            <path d="M28 15 Q32 8 38 10" fill="none" stroke="#FFB300" stroke-width="2.5" stroke-linecap="round" />
+            <circle cx="38" cy="10" r="3" fill="#FFD23F" />
+            <circle cx="15" cy="21" r="3.5" fill="#3A4256" />
+          </svg>
+          <h1 class="logo">BOMBER<span class="logo-accent">BREAK</span></h1>
+          <p class="tagline">La partie de pause-café. 2 à 4 joueurs, un code, trois minutes.</p>
+        </header>
+
+        <form id="form-home" class="panel">
+          <label for="input-name">Pseudo</label>
+          <input id="input-name" maxlength="16" required autocomplete="nickname" placeholder="Ton pseudo" />
+          <button type="submit" class="btn btn-primary">Créer une partie</button>
+          <div class="divider"><span>ou</span></div>
+          <label for="input-code">Code de la partie</label>
+          <div class="join-row">
+            <input id="input-code" class="code-input" maxlength="4" placeholder="ABCD" autocomplete="off" spellcheck="false" />
+            <button type="button" id="btn-join" class="btn btn-secondary">Rejoindre</button>
+          </div>
+        </form>
+
+        <p class="hint">Déplacement : flèches ou ZQSD/WASD · Bombe : espace</p>
+      </section>
+
+      <section id="screen-room" class="screen" hidden>
+        <p class="room-label">Code de la partie</p>
+        <div id="room-code" class="room-code"></div>
+        <p class="hint">Partage ce code avec tes collègues.</p>
+        <ul id="player-list" class="player-list"></ul>
+        <button id="btn-start" class="btn btn-primary" hidden>Lancer la partie</button>
+        <p id="start-hint" class="hint" hidden>Il faut au moins 2 joueurs pour lancer.</p>
+        <p id="wait-hint" class="hint" hidden>En attente du lancement par l'hôte…</p>
+      </section>
+
+      <section id="screen-game" class="screen screen-game" hidden>
+        <div class="hud">
+          <span id="hud-alive"></span>
+          <span id="hud-stats"></span>
+        </div>
+        <div id="canvas-wrap" class="canvas-wrap"></div>
+        <div id="overlay-end" class="overlay" hidden>
+          <div class="overlay-card">
+            <p id="end-title" class="overlay-title"></p>
+            <p class="hint">Retour à la salle d'attente…</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

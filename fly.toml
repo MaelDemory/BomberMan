@@ -1,0 +1,16 @@
+# Fly.io — un seul service : HTTP statique + WebSocket sur le même port.
+# auto_stop coupe la machine quand plus personne ne joue (état en mémoire
+# uniquement : une partie en cours ne survit pas à un arrêt, accepté en v1).
+app = "bomberman-mael"
+primary_region = "cdg"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
