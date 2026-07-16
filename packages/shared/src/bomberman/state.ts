@@ -6,11 +6,11 @@ import {
   BASE_SPEED,
   GRID_H,
   GRID_W,
-  SOFT_BLOCK_DENSITY,
   SPAWNS,
   Tile,
   TILE,
 } from './constants';
+import { MAPS, type MapDef } from './maps';
 
 export type Dir = 'up' | 'down' | 'left' | 'right';
 export type PowerupKind = 'bomb' | 'flame' | 'speed';
@@ -76,26 +76,26 @@ export function tileAt(grid: number[], tx: number, ty: number): Tile {
 // Parameters
 //   seed — graine PRNG (uint32)
 //   playerIds — identifiants des joueurs (2 à 4), dans l'ordre des spawns
+//   map — générateur de map (piliers + densité) ; Classique par défaut
 // What it does
-//   Construit l'état initial : murs en bordure et piliers aux coordonnées paires,
-//   blocs destructibles semés aléatoirement, zones de spawn dégagées (case + voisines
-//   orthogonales), joueurs placés au centre de leur coin.
+//   Construit l'état initial : murs en bordure, piliers et densité selon la
+//   map, blocs destructibles semés aléatoirement, zones de spawn dégagées
+//   (case + voisines orthogonales), joueurs placés au centre de leur coin.
 // Output
 //   GameState prêt pour le premier step()
-export function createGame(seed: number, playerIds: PlayerId[]): GameState {
+export function createGame(seed: number, playerIds: PlayerId[], map: MapDef = MAPS.classic): GameState {
   let rng = seed >>> 0;
   const grid: number[] = new Array(GRID_W * GRID_H).fill(Tile.Floor);
 
   for (let y = 0; y < GRID_H; y++) {
     for (let x = 0; x < GRID_W; x++) {
       const border = x === 0 || y === 0 || x === GRID_W - 1 || y === GRID_H - 1;
-      const pillar = x % 2 === 0 && y % 2 === 0;
-      if (border || pillar) {
+      if (border || map.isPillar(x, y)) {
         grid[y * GRID_W + x] = Tile.Wall;
       } else {
         const r = nextRand(rng);
         rng = r.state;
-        if (r.value < SOFT_BLOCK_DENSITY) grid[y * GRID_W + x] = Tile.Soft;
+        if (r.value < map.softDensity) grid[y * GRID_W + x] = Tile.Soft;
       }
     }
   }

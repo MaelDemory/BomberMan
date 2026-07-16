@@ -4,4 +4,6 @@ export * from './bomberman/constants';
 export * from './bomberman/state';
 export * from './bomberman/step';
 export * from './bomberman/bot';
+export * from './bomberman/maps';
+export * from './bomberman/suddendeath';
 export * from './protocol/messages';

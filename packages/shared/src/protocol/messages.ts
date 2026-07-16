@@ -1,6 +1,7 @@
 import type { InputState, PlayerId } from '../engine/types';
 import type { GameState } from '../bomberman/state';
 import type { BotDifficulty } from '../bomberman/bot';
+import { MAP_IDS, type MapChoice } from '../bomberman/maps';
 
 export const MAX_NAME_LENGTH = 16;
 export const ROOM_CODE_LENGTH = 4;
@@ -22,14 +23,15 @@ export type ClientMsg =
   // dernier tick consommé dans chaque snapshot, ce qui permet au client de
   // rejouer ses inputs non acquittés (réconciliation exacte, sans glissement).
   | { type: 'input'; tick: number; keys: InputState }
-  // Gestion des bots — hôte uniquement, en lobby uniquement (validé serveur).
+  // Gestion des bots et de la map — hôte uniquement, en lobby uniquement (validé serveur).
   | { type: 'addBot'; difficulty: BotDifficulty }
   | { type: 'removeBot'; botId: PlayerId }
+  | { type: 'setMap'; map: MapChoice }
   | { type: 'leave' };
 
 export type ServerMsg =
-  | { type: 'joined'; playerId: PlayerId; roomCode: string; players: LobbyPlayer[]; hostId: PlayerId }
-  | { type: 'lobby'; players: LobbyPlayer[]; hostId: PlayerId }
+  | { type: 'joined'; playerId: PlayerId; roomCode: string; players: LobbyPlayer[]; hostId: PlayerId; map: MapChoice }
+  | { type: 'lobby'; players: LobbyPlayer[]; hostId: PlayerId; map: MapChoice }
   | { type: 'start'; seed: number }
   | { type: 'snapshot'; state: GameState; acks: Record<PlayerId, number> }
   | { type: 'gameover'; winner: PlayerId | null }
@@ -103,6 +105,10 @@ export function parseClientMsg(raw: string): ClientMsg | null {
     case 'removeBot':
       return typeof data.botId === 'string' && data.botId.length > 0 && data.botId.length <= 64
         ? { type: 'removeBot', botId: data.botId }
+        : null;
+    case 'setMap':
+      return data.map === 'random' || MAP_IDS.includes(data.map as (typeof MAP_IDS)[number])
+        ? { type: 'setMap', map: data.map as MapChoice }
         : null;
     case 'leave':
       return { type: 'leave' };

@@ -22,7 +22,6 @@ export const MAX_FLAME = 8;
 export const BOMB_FUSE_TICKS = 40; // 2 s
 export const FLAME_TICKS = 10; // 0,5 s
 
-export const SOFT_BLOCK_DENSITY = 0.7;
 export const POWERUP_CHANCE = 0.3;
 
 export enum Tile {

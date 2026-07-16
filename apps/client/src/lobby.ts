@@ -1,8 +1,12 @@
 import {
+  MAPS,
   ROOM_CODE_LENGTH,
+  SUDDEN_DEATH_START_TICK,
+  TICK_RATE,
   type BotDifficulty,
   type GameState,
   type LobbyPlayer,
+  type MapChoice,
   type PlayerId,
 } from '@bomber/shared';
 import { PLAYER_COLORS } from './game';
@@ -13,6 +17,7 @@ export interface LobbyCallbacks {
   onStart: () => void;
   onAddBot: (difficulty: BotDifficulty) => void;
   onRemoveBot: (botId: PlayerId) => void;
+  onSetMap: (map: MapChoice) => void;
 }
 
 const DIFFICULTY_LABEL: Record<BotDifficulty, string> = {
@@ -80,6 +85,9 @@ export function initLobby(cb: LobbyCallbacks): void {
   el('btn-start').addEventListener('click', () => cb.onStart());
   el('btn-add-bot').addEventListener('click', () => {
     cb.onAddBot(el<HTMLSelectElement>('bot-difficulty').value as BotDifficulty);
+  });
+  el<HTMLSelectElement>('map-select').addEventListener('change', (ev) => {
+    cb.onSetMap((ev.target as HTMLSelectElement).value as MapChoice);
   });
   onRemoveBot = cb.onRemoveBot;
 
@@ -157,8 +165,22 @@ export function showScreen(name: 'home' | 'room' | 'game'): void {
 //   visible pour l'hôte seul et désactivé sous 2 joueurs.
 // Output
 //   void
-export function renderRoom(code: string, players: LobbyPlayer[], hostId: PlayerId, selfId: PlayerId): void {
+export function renderRoom(
+  code: string,
+  players: LobbyPlayer[],
+  hostId: PlayerId,
+  selfId: PlayerId,
+  map: MapChoice
+): void {
   el('room-code').textContent = code;
+
+  // Map : sélecteur pour l'hôte, simple étiquette pour les invités.
+  const mapSelect = el<HTMLSelectElement>('map-select');
+  const mapLabel = el('map-label');
+  mapSelect.hidden = selfId !== hostId;
+  mapLabel.hidden = selfId === hostId;
+  mapSelect.value = map;
+  mapLabel.textContent = `Map : ${map === 'random' ? 'Aléatoire' : MAPS[map].label}`;
 
   const isHost = selfId === hostId;
   const list = el('player-list');
@@ -300,7 +322,11 @@ export function renderLeaderboard(entries: { name: string; wins: number; games: 
 //   void
 export function updateHud(state: GameState, selfId: PlayerId): void {
   const alive = state.players.filter((p) => p.alive).length;
-  el('hud-alive').textContent = `Vivants ${alive}/${state.players.length}`;
+  // Mort subite : compte à rebours dans les 30 dernières secondes, puis alerte.
+  const remaining = SUDDEN_DEATH_START_TICK - state.tick;
+  const sudden =
+    remaining <= 0 ? ' · ☠ Mort subite !' : remaining <= 30 * TICK_RATE ? ` · Mort subite ${Math.ceil(remaining / TICK_RATE)} s` : '';
+  el('hud-alive').textContent = `Vivants ${alive}/${state.players.length}${sudden}`;
   const me = state.players.find((p) => p.id === selfId);
   const stats = el('hud-stats');
   stats.textContent = me ? `Bombes ${me.maxBombs} · Portée ${me.flame} · Vitesse ${me.speed}` : '';

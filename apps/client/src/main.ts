@@ -1,4 +1,4 @@
-import type { ClientMsg, LobbyPlayer, PlayerId, ServerMsg } from '@bomber/shared';
+import type { ClientMsg, LobbyPlayer, MapChoice, PlayerId, ServerMsg } from '@bomber/shared';
 import { connect } from './net';
 import { createGameView, type GameView } from './game';
 import { trackInput, type InputTracker } from './input';
@@ -38,6 +38,7 @@ let selfId: PlayerId = '';
 let roomCode = '';
 let players: LobbyPlayer[] = [];
 let hostId: PlayerId = '';
+let map: MapChoice = 'random';
 let playing = false;
 let input: InputTracker | null = null;
 
@@ -61,7 +62,8 @@ function handleMsg(msg: ServerMsg): void {
       roomCode = msg.roomCode;
       players = msg.players;
       hostId = msg.hostId;
-      renderRoom(roomCode, players, hostId, selfId);
+      map = msg.map;
+      renderRoom(roomCode, players, hostId, selfId, map);
       showScreen('room');
       // URL propre après un lien d'invitation (un refresh retombe sur l'accueil).
       if (location.pathname !== '/') history.replaceState(null, '', '/');
@@ -69,7 +71,8 @@ function handleMsg(msg: ServerMsg): void {
     case 'lobby':
       players = msg.players;
       hostId = msg.hostId;
-      renderRoom(roomCode, players, hostId, selfId);
+      map = msg.map;
+      renderRoom(roomCode, players, hostId, selfId, map);
       if (!playing) {
         // Retour automatique en salle d'attente (notamment après un gameover).
         hideGameOver();
@@ -123,6 +126,7 @@ async function main(): Promise<void> {
     onStart: () => send({ type: 'start' }),
     onAddBot: (difficulty) => send({ type: 'addBot', difficulty }),
     onRemoveBot: (botId) => send({ type: 'removeBot', botId }),
+    onSetMap: (choice) => send({ type: 'setMap', map: choice }),
   });
   prefillHome();
   void loadScores();

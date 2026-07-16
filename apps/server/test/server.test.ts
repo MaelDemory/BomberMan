@@ -179,6 +179,21 @@ describe('serveur de jeu', () => {
     expect(Object.keys(snap.acks)).toHaveLength(1);
   });
 
+  it('setMap par l\'hôte diffuse la map, ignoré pour un non-hôte', async () => {
+    const port = await startServer();
+    const { host, guest } = await createPair(port);
+
+    host.send({ type: 'setMap', map: 'tunnels' });
+    const lobbyHost = await host.next();
+    const lobbyGuest = await guest.next();
+    expect(lobbyHost.map).toBe('tunnels');
+    expect(lobbyGuest.map).toBe('tunnels');
+
+    guest.send({ type: 'setMap', map: 'chaos' });
+    await sleep(300);
+    expect(host.pendingCount()).toBe(0);
+  });
+
   it('addBot par un non-hôte est ignoré', async () => {
     const port = await startServer();
     const { host, guest } = await createPair(port);

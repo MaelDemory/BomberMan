@@ -160,6 +160,9 @@ export function createGameServer(opts: { dataDir?: string } = {}): Server {
           case 'removeBot':
             if (room && playerId) room.removeBot(playerId, msg.botId);
             break;
+          case 'setMap':
+            if (room && playerId) room.setMap(playerId, msg.map);
+            break;
           case 'leave':
             if (room && playerId) room.leave(playerId);
             room = null;

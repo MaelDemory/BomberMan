@@ -4,6 +4,7 @@ import { nextInt, nextRand } from '../engine/prng';
 import { GRID_H, GRID_W, Tile, TILE } from './constants';
 import type { GameState, PlayerState } from './state';
 import { tileAt } from './state';
+import { SUDDEN_DEATH_ORDER, SUDDEN_DEATH_START_TICK, suddenDeathNextIndex } from './suddendeath';
 
 /*
  * IA des bots — exécutée côté serveur uniquement, en dehors de step() :
@@ -89,11 +90,19 @@ function flameSet(state: GameState): Set<number> {
 }
 
 // Cases dangereuses maintenant ou bientôt : flammes actives + souffles futurs
-// de toutes les bombes posées (approximation prudente, chaînes incluses de fait).
-// Les souffles futurs sont traversables (question de timing), pas les flammes.
+// de toutes les bombes posées (approximation prudente, chaînes incluses de fait)
+// + les prochaines cases condamnées par la mort subite. Les souffles futurs
+// sont traversables (question de timing), pas les flammes.
 function dangerSet(state: GameState): Set<number> {
   const danger = flameSet(state);
   for (const b of state.bombs) blastTiles(state, b.x, b.y, b.flame, danger);
+  if (state.tick >= SUDDEN_DEATH_START_TICK - 40) {
+    const from = suddenDeathNextIndex(state.tick);
+    for (let k = from; k < from + 4 && k < SUDDEN_DEATH_ORDER.length; k++) {
+      const [tx, ty] = SUDDEN_DEATH_ORDER[k];
+      danger.add(toIdx(tx, ty));
+    }
+  }
   return danger;
 }
 

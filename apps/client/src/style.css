@@ -350,6 +350,30 @@ input::placeholder {
   font-size: 14px;
 }
 
+/* Choix de map : sélecteur pour l'hôte, étiquette pour les invités. */
+.map-controls {
+  width: 100%;
+}
+
+.map-controls select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 2px solid var(--cream-border);
+  background: var(--cream);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+}
+
+.map-label {
+  display: block;
+  text-align: center;
+  font-weight: 700;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 /* Contrôles bots (hôte uniquement) : sélecteur de difficulté + ajout. */
 .bot-controls {
   display: flex;

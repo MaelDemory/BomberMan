@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { WebSocket } from 'ws';
 import type { Participant } from './scores';
 import {
@@ -6,6 +6,8 @@ import {
   createBotBrain,
   createGame,
   EMPTY_INPUT,
+  MAP_IDS,
+  MAPS,
   MAX_PLAYERS,
   step,
   TICK_MS,
@@ -14,6 +16,7 @@ import {
   type GameState,
   type InputState,
   type LobbyPlayer,
+  type MapChoice,
   type PlayerId,
   type ServerMsg,
 } from '@bomber/shared';
@@ -65,6 +68,7 @@ export class Room {
   private bots: Bot[] = [];
   private participants: Participant[] = []; // figés au start (les départs en cours de partie comptent)
   private hostId: PlayerId = '';
+  private mapChoice: MapChoice = 'random';
   private phase: 'lobby' | 'running' = 'lobby';
   private state: GameState | null = null;
   private feeds = new Map<PlayerId, InputFeed>();
@@ -97,8 +101,9 @@ export class Room {
       roomCode: this.code,
       players: this.lobbyPlayers(),
       hostId: this.hostId,
+      map: this.mapChoice,
     });
-    this.broadcast({ type: 'lobby', players: this.lobbyPlayers(), hostId: this.hostId }, id);
+    this.broadcast({ type: 'lobby', players: this.lobbyPlayers(), hostId: this.hostId, map: this.mapChoice }, id);
     return { id };
   }
 
@@ -114,7 +119,8 @@ export class Room {
     const total = this.clients.length + this.bots.length;
     if (playerId !== this.hostId || this.phase !== 'lobby' || total < 2) return;
     const seed = randomBytes(4).readUInt32BE(0);
-    this.state = createGame(seed, [...this.clients, ...this.bots].map((c) => c.id));
+    const map = this.mapChoice === 'random' ? MAPS[MAP_IDS[randomInt(MAP_IDS.length)]] : MAPS[this.mapChoice];
+    this.state = createGame(seed, [...this.clients, ...this.bots].map((c) => c.id), map);
     this.feeds = new Map(
       this.clients.map((c) => [c.id, { keys: EMPTY_INPUT, buffer: new Map(), lastApplied: -1 }])
     );
@@ -167,7 +173,7 @@ export class Room {
       difficulty,
       brain: createBotBrain(randomBytes(4).readUInt32BE(0)),
     });
-    this.broadcast({ type: 'lobby', players: this.lobbyPlayers(), hostId: this.hostId });
+    this.broadcast({ type: 'lobby', players: this.lobbyPlayers(), hostId: this.hostId, map: this.mapChoice });
   }
 
   // Parameters
@@ -183,8 +189,21 @@ export class Room {
     const before = this.bots.length;
     this.bots = this.bots.filter((b) => b.id !== botId);
     if (this.bots.length !== before) {
-      this.broadcast({ type: 'lobby', players: this.lobbyPlayers(), hostId: this.hostId });
+      this.broadcast({ type: 'lobby', players: this.lobbyPlayers(), hostId: this.hostId, map: this.mapChoice });
     }
+  }
+
+  // Parameters
+  //   playerId — joueur demandant le changement (doit être l'hôte)
+  //   map — id de map ou 'random', validé par parseClientMsg
+  // What it does
+  //   Change la map de la room (hôte, en lobby uniquement) et diffuse le lobby.
+  // Output
+  //   None
+  setMap(playerId: PlayerId, map: MapChoice): void {
+    if (playerId !== this.hostId || this.phase !== 'lobby' || map === this.mapChoice) return;
+    this.mapChoice = map;
+    this.broadcast({ type: 'lobby', players: this.lobbyPlayers(), hostId: this.hostId, map: this.mapChoice });
   }
 
   // Avance la file d'un joueur d'un tick client : consomme le plus ancien input
@@ -223,7 +242,7 @@ export class Room {
     }
     if (this.hostId === playerId) this.hostId = this.clients[0].id;
     if (this.phase === 'lobby') {
-      this.broadcast({ type: 'lobby', players: this.lobbyPlayers(), hostId: this.hostId });
+      this.broadcast({ type: 'lobby', players: this.lobbyPlayers(), hostId: this.hostId, map: this.mapChoice });
     }
   }
 
@@ -264,7 +283,7 @@ export class Room {
     this.state = null;
     this.feeds = new Map();
     this.overTicksLeft = -1;
-    this.broadcast({ type: 'lobby', players: this.lobbyPlayers(), hostId: this.hostId });
+    this.broadcast({ type: 'lobby', players: this.lobbyPlayers(), hostId: this.hostId, map: this.mapChoice });
   }
 
   private stopLoop(): void {

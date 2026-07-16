@@ -6,7 +6,11 @@ import {
   GRID_H,
   GRID_W,
   predictMove,
+  SUDDEN_DEATH_ORDER,
+  SUDDEN_DEATH_START_TICK,
+  suddenDeathNextIndex,
   TICK_MS,
+  TICK_RATE,
   TILE,
   Tile,
   type Dir,
@@ -96,6 +100,10 @@ export async function createGameView(
   // interpoler sur le temps serveur plutôt que sur l'heure d'arrivée des
   // snapshots rend la gigue réseau invisible (vitesse constante à l'écran).
   let clockOffset: number | null = null;
+  // Screen shake sur les explosions (amplitude selon l'ampleur, décroissance 260 ms).
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let shakeAmp = 0;
+  let shakeStart = 0;
 
   const colorOf = (id: PlayerId): string => PLAYER_COLORS[(colorIndex.get(id) ?? 0) % PLAYER_COLORS.length];
 
@@ -237,6 +245,18 @@ export async function createGameView(
     };
   }
 
+  // Mort subite : assombrit en pulsant les prochaines cases condamnées
+  // (l'ordre de la spirale est déterministe, le client le connaît).
+  function drawSuddenDeathWarning(state: GameState, now: number): void {
+    if (state.tick < SUDDEN_DEATH_START_TICK - 3 * TICK_RATE) return;
+    const from = suddenDeathNextIndex(state.tick);
+    const pulse = reducedMotion ? 0.28 : 0.2 + 0.12 * Math.sin(now / 120);
+    for (let k = from; k < from + 3 && k < SUDDEN_DEATH_ORDER.length; k++) {
+      const [tx, ty] = SUDDEN_DEATH_ORDER[k];
+      gfx.rect(tx * CELL, ty * CELL, CELL, CELL).fill({ color: '#17223F', alpha: pulse });
+    }
+  }
+
   // Bombes fantômes : affichées dès l'appui, retirées quand la vraie bombe
   // apparaît dans l'état rendu (ou à expiration si le serveur a refusé).
   function drawGhosts(disc: GameState, now: number): void {
@@ -265,12 +285,22 @@ export async function createGameView(
 
     gfx.clear();
     drawTiles(disc);
+    drawSuddenDeathWarning(disc, performance.now());
     drawItems(disc, performance.now());
     drawGhosts(disc, performance.now());
     fx.drawUnder(performance.now()); // croix de portée : au sol, sous les joueurs
     const positions = new Map<PlayerId, RenderedPos>();
     drawPlayers(a, b, alpha, positions);
     fx.drawOver(positions, performance.now());
+
+    // Screen shake : jitter sinusoïdal décroissant sur toute la scène.
+    const st = performance.now() - shakeStart;
+    if (shakeAmp > 0 && st < 260) {
+      const decay = 1 - st / 260;
+      app.stage.position.set(Math.sin(st * 0.09) * shakeAmp * decay, Math.cos(st * 0.117) * shakeAmp * decay);
+    } else {
+      app.stage.position.set(0, 0);
+    }
   });
 
   return {
@@ -314,7 +344,13 @@ export async function createGameView(
       // absorbe la gigue d'arrivée au lieu de la répercuter sur le rendu.
       const raw = performance.now() - state.tick * TICK_MS;
       clockOffset = clockOffset === null ? raw : clockOffset + (raw - clockOffset) * 0.1;
-      fx.onSnapshot(snaps[snaps.length - 1], state); // détecte les bonus ramassés (diff de stats)
+      const prevSnap = snaps[snaps.length - 1];
+      fx.onSnapshot(prevSnap, state); // détecte les bonus ramassés (diff de stats)
+      // Explosion : de nouvelles flammes déclenchent un screen shake proportionné.
+      if (!reducedMotion && prevSnap && state.flames.length > prevSnap.flames.length) {
+        shakeAmp = Math.min(7, 3 + (state.flames.length - prevSnap.flames.length) * 0.35);
+        shakeStart = performance.now();
+      }
       snaps.push(state);
       if (snaps.length > 30) snaps.shift();
 

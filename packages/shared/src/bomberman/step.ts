@@ -15,6 +15,7 @@ import {
 } from './constants';
 import type { BombState, Dir, GameState, PlayerState, PowerupKind } from './state';
 import { tileAt } from './state';
+import { SUDDEN_DEATH_INTERVAL, SUDDEN_DEATH_ORDER, SUDDEN_DEATH_START_TICK } from './suddendeath';
 
 const POWERUP_KINDS: readonly PowerupKind[] = ['bomb', 'flame', 'speed'];
 const DIRS: ReadonlyArray<readonly [number, number]> = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -292,6 +293,24 @@ export function step(prev: GameState, inputs: Record<PlayerId, InputState>): Gam
     if (kind === 'bomb') p.maxBombs = Math.min(MAX_BOMBS, p.maxBombs + 1);
     else if (kind === 'flame') p.flame = Math.min(MAX_FLAME, p.flame + 1);
     else p.speed = Math.min(MAX_SPEED, p.speed + 1);
+  }
+
+  // Mort subite : un mur indestructible tombe en spirale, écrasant blocs,
+  // bombes, bonus et joueurs (chevauchement de boîte, pas seulement le centre :
+  // un joueur coincé contre le mur ne doit pas rester bloqué vivant dessous).
+  if (state.tick >= SUDDEN_DEATH_START_TICK) {
+    const elapsed = state.tick - SUDDEN_DEATH_START_TICK;
+    const index = elapsed / SUDDEN_DEATH_INTERVAL;
+    if (elapsed % SUDDEN_DEATH_INTERVAL === 0 && index < SUDDEN_DEATH_ORDER.length) {
+      const [tx, ty] = SUDDEN_DEATH_ORDER[index];
+      state.grid[ty * GRID_W + tx] = Tile.Wall;
+      state.bombs = state.bombs.filter((b) => !(b.x === tx && b.y === ty));
+      state.powerups = state.powerups.filter((u) => !(u.x === tx && u.y === ty));
+      state.flames = state.flames.filter((f) => !(f.x === tx && f.y === ty));
+      for (const p of state.players) {
+        if (p.alive && playerOverlapsTile(p, tx, ty)) p.alive = false;
+      }
+    }
   }
 
   if (state.players.length > 1) {
