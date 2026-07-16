@@ -82,6 +82,55 @@ export function initLobby(cb: LobbyCallbacks): void {
     cb.onAddBot(el<HTMLSelectElement>('bot-difficulty').value as BotDifficulty);
   });
   onRemoveBot = cb.onRemoveBot;
+
+  // Lien d'invitation : copie l'URL directe de la room, feedback 2 s.
+  const copyBtn = el<HTMLButtonElement>('btn-copy-link');
+  copyBtn.addEventListener('click', async () => {
+    const code = el('room-code').textContent ?? '';
+    try {
+      await navigator.clipboard.writeText(`${location.origin}/${code}`);
+      copyBtn.textContent = 'Lien copié !';
+    } catch {
+      copyBtn.textContent = code ? `Lien : ${location.host}/${code}` : 'Copie impossible';
+    }
+    window.setTimeout(() => {
+      copyBtn.textContent = "Copier le lien d'invitation";
+    }, 2000);
+  });
+}
+
+// Parameters
+//   (aucun)
+// What it does
+//   Préremplit le formulaire d'accueil : code de room si l'URL est un lien
+//   d'invitation (/ABCD), et dernier pseudo utilisé (localStorage). Focus sur
+//   le champ encore vide pour que l'invité n'ait qu'à confirmer.
+// Output
+//   void
+export function prefillHome(): void {
+  const name = el<HTMLInputElement>('input-name');
+  const code = el<HTMLInputElement>('input-code');
+  const saved = localStorage.getItem('kablam-pseudo');
+  if (saved) name.value = saved;
+  const invite = location.pathname.match(/^\/([A-Za-z]{4})$/);
+  if (invite) {
+    code.value = invite[1].toUpperCase();
+    (saved ? code : name).focus();
+  }
+}
+
+// Parameters
+//   name — pseudo confirmé (create ou join envoyé)
+// What it does
+//   Mémorise le pseudo pour préremplir les prochaines visites.
+// Output
+//   void
+export function rememberName(name: string): void {
+  try {
+    localStorage.setItem('kablam-pseudo', name);
+  } catch {
+    // stockage indisponible (navigation privée) : tant pis, sans conséquence
+  }
 }
 
 // Mémorisé à l'init pour que renderRoom puisse câbler les croix de retrait.

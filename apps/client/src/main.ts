@@ -5,6 +5,8 @@ import { trackInput, type InputTracker } from './input';
 import {
   hideGameOver,
   initLobby,
+  prefillHome,
+  rememberName,
   renderLeaderboard,
   renderRoom,
   showError,
@@ -61,6 +63,8 @@ function handleMsg(msg: ServerMsg): void {
       hostId = msg.hostId;
       renderRoom(roomCode, players, hostId, selfId);
       showScreen('room');
+      // URL propre après un lien d'invitation (un refresh retombe sur l'accueil).
+      if (location.pathname !== '/') history.replaceState(null, '', '/');
       break;
     case 'lobby':
       players = msg.players;
@@ -108,12 +112,19 @@ function handleMsg(msg: ServerMsg): void {
 //   Promise<void>
 async function main(): Promise<void> {
   initLobby({
-    onCreate: (name) => send({ type: 'create', name }),
-    onJoin: (code, name) => send({ type: 'join', roomCode: code, name }),
+    onCreate: (name) => {
+      rememberName(name);
+      send({ type: 'create', name });
+    },
+    onJoin: (code, name) => {
+      rememberName(name);
+      send({ type: 'join', roomCode: code, name });
+    },
     onStart: () => send({ type: 'start' }),
     onAddBot: (difficulty) => send({ type: 'addBot', difficulty }),
     onRemoveBot: (botId) => send({ type: 'removeBot', botId }),
   });
+  prefillHome();
   void loadScores();
   view = await createGameView(el('canvas-wrap'), (tick, keys) => send({ type: 'input', tick, keys }));
   const net = connect(handleMsg, () => {

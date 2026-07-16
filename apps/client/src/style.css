@@ -344,6 +344,12 @@ input::placeholder {
   color: var(--muted);
 }
 
+.btn-copy {
+  width: 100%;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
 /* Contrôles bots (hôte uniquement) : sélecteur de difficulté + ajout. */
 .bot-controls {
   display: flex;

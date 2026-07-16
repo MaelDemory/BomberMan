@@ -67,6 +67,12 @@ function handleRequest(req: IncomingMessage, res: ServerResponse, scores: ScoreS
     res.end(JSON.stringify(scores.top(20)));
     return;
   }
+  // Lien d'invitation : /ABCD (code de room, 4 lettres) sert l'app — le client
+  // lit le code dans l'URL et préremplit le formulaire de connexion.
+  if (/^\/[A-Za-z]{4}$/.test(url.pathname)) {
+    void serveStatic('/', res);
+    return;
+  }
   void serveStatic(url.pathname, res);
 }
 

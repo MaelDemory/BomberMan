@@ -206,6 +206,22 @@ describe('serveur de jeu', () => {
     expect(host.pendingCount()).toBe(0);
   });
 
+  it('un lien d\'invitation /ABCD sert la même réponse que /', async () => {
+    // En CI le client n'est pas buildé (404 des deux côtés) ; en local les
+    // deux servent index.html — dans tous les cas le comportement est aligné.
+    const port = await startServer();
+    const [home, invite, tooLong] = await Promise.all([
+      fetch(`http://127.0.0.1:${port}/`),
+      fetch(`http://127.0.0.1:${port}/ABCD`),
+      fetch(`http://127.0.0.1:${port}/ABCDE`),
+    ]);
+    expect(invite.status).toBe(home.status);
+    if (home.status === 200) {
+      expect(await invite.text()).toBe(await home.text());
+    }
+    expect(tooLong.status).toBe(404);
+  });
+
   it('GET /scores répond un classement JSON (vide au départ)', async () => {
     const port = await startServer();
     const res = await fetch(`http://127.0.0.1:${port}/scores`);
