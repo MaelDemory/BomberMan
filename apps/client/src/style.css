@@ -344,6 +344,57 @@ input::placeholder {
   color: var(--muted);
 }
 
+/* Contrôles bots (hôte uniquement) : sélecteur de difficulté + ajout. */
+.bot-controls {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.bot-controls select {
+  flex: 0 0 auto;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 2px solid var(--cream-border);
+  background: var(--cream);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+}
+
+.bot-controls .btn {
+  flex: 1;
+}
+
+/* Retrait d'un bot (visible hôte) : petite croix physique en bout de ligne. */
+.kick {
+  border: none;
+  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--cream-shade);
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.kick:hover {
+  background: var(--bomb-red);
+  color: #fff;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 #btn-start {
   width: 100%;
   margin-top: 8px;

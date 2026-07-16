@@ -140,6 +140,12 @@ export function createGameServer(): Server {
           case 'input':
             if (room && playerId) room.setInput(playerId, msg.tick, msg.keys);
             break;
+          case 'addBot':
+            if (room && playerId) room.addBot(playerId, msg.difficulty);
+            break;
+          case 'removeBot':
+            if (room && playerId) room.removeBot(playerId, msg.botId);
+            break;
           case 'leave':
             if (room && playerId) room.leave(playerId);
             room = null;

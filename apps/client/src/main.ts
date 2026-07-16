@@ -94,6 +94,8 @@ async function main(): Promise<void> {
     onCreate: (name) => send({ type: 'create', name }),
     onJoin: (code, name) => send({ type: 'join', roomCode: code, name }),
     onStart: () => send({ type: 'start' }),
+    onAddBot: (difficulty) => send({ type: 'addBot', difficulty }),
+    onRemoveBot: (botId) => send({ type: 'removeBot', botId }),
   });
   view = await createGameView(el('canvas-wrap'), (tick, keys) => send({ type: 'input', tick, keys }));
   const net = connect(handleMsg, () => {

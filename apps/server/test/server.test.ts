@@ -153,6 +153,55 @@ describe('serveur de jeu', () => {
     expect(guest.pendingCount()).toBe(0);
   });
 
+  it('partie solo : addBot par l\'hôte puis start à 1 humain + 1 bot', async () => {
+    const port = await startServer();
+    const host = await connect(port);
+    host.send({ type: 'create', name: 'alice' });
+    await host.next(); // joined
+
+    host.send({ type: 'addBot', difficulty: 'easy' });
+    const lobby = await host.next();
+    expect(lobby.type).toBe('lobby');
+    expect(lobby.players).toHaveLength(2);
+    expect(lobby.players[1]).toMatchObject({ name: 'Bim', bot: true, difficulty: 'easy' });
+
+    host.send({ type: 'start' });
+    const start = await host.next();
+    expect(start.type).toBe('start');
+    const snap = await host.next();
+    expect(snap.type).toBe('snapshot');
+    expect(snap.state.players).toHaveLength(2);
+    // Le bot est bien un joueur de la sim ; les acks ne concernent que les humains.
+    expect(Object.keys(snap.acks)).toHaveLength(1);
+  });
+
+  it('addBot par un non-hôte est ignoré', async () => {
+    const port = await startServer();
+    const { host, guest } = await createPair(port);
+    guest.send({ type: 'addBot', difficulty: 'hard' });
+    await sleep(300);
+    expect(host.pendingCount()).toBe(0);
+    expect(guest.pendingCount()).toBe(0);
+  });
+
+  it('removeBot retire le bot et le start reste bloqué seul', async () => {
+    const port = await startServer();
+    const host = await connect(port);
+    host.send({ type: 'create', name: 'alice' });
+    await host.next(); // joined
+    host.send({ type: 'addBot', difficulty: 'hard' });
+    const lobby = await host.next();
+    const botId = lobby.players[1].id;
+
+    host.send({ type: 'removeBot', botId });
+    const after = await host.next();
+    expect(after.players).toHaveLength(1);
+
+    host.send({ type: 'start' }); // seul : ignoré
+    await sleep(300);
+    expect(host.pendingCount()).toBe(0);
+  });
+
   it('les messages malformés sont ignorés sans fermer la connexion', async () => {
     const port = await startServer();
     const client = await connect(port);

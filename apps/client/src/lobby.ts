@@ -1,11 +1,25 @@
-import { ROOM_CODE_LENGTH, type GameState, type LobbyPlayer, type PlayerId } from '@bomber/shared';
+import {
+  ROOM_CODE_LENGTH,
+  type BotDifficulty,
+  type GameState,
+  type LobbyPlayer,
+  type PlayerId,
+} from '@bomber/shared';
 import { PLAYER_COLORS } from './game';
 
 export interface LobbyCallbacks {
   onCreate: (name: string) => void;
   onJoin: (code: string, name: string) => void;
   onStart: () => void;
+  onAddBot: (difficulty: BotDifficulty) => void;
+  onRemoveBot: (botId: PlayerId) => void;
 }
+
+const DIFFICULTY_LABEL: Record<BotDifficulty, string> = {
+  easy: 'Facile',
+  medium: 'Moyen',
+  hard: 'Difficile',
+};
 
 const ERROR_TEXT: Record<string, string> = {
   room_not_found: 'Partie introuvable — vérifie le code.',
@@ -64,7 +78,14 @@ export function initLobby(cb: LobbyCallbacks): void {
   });
 
   el('btn-start').addEventListener('click', () => cb.onStart());
+  el('btn-add-bot').addEventListener('click', () => {
+    cb.onAddBot(el<HTMLSelectElement>('bot-difficulty').value as BotDifficulty);
+  });
+  onRemoveBot = cb.onRemoveBot;
 }
+
+// Mémorisé à l'init pour que renderRoom puisse câbler les croix de retrait.
+let onRemoveBot: (botId: PlayerId) => void = () => {};
 
 // Parameters
 //   name — écran à afficher : 'home', 'room' ou 'game'
@@ -90,6 +111,7 @@ export function showScreen(name: 'home' | 'room' | 'game'): void {
 export function renderRoom(code: string, players: LobbyPlayer[], hostId: PlayerId, selfId: PlayerId): void {
   el('room-code').textContent = code;
 
+  const isHost = selfId === hostId;
   const list = el('player-list');
   list.textContent = '';
   players.forEach((p, i) => {
@@ -102,19 +124,29 @@ export function renderRoom(code: string, players: LobbyPlayer[], hostId: PlayerI
     label.className = 'player-name';
     label.textContent = p.name;
     li.append(swatch, label);
+    if (p.bot && p.difficulty) li.append(makeBadge(`bot · ${DIFFICULTY_LABEL[p.difficulty]}`));
     if (p.id === hostId) li.append(makeBadge('hôte'));
     if (p.id === selfId) li.append(makeBadge('toi'));
+    if (p.bot && isHost) {
+      const kick = document.createElement('button');
+      kick.className = 'kick';
+      kick.textContent = '×';
+      kick.setAttribute('aria-label', `Retirer le bot ${p.name}`);
+      kick.addEventListener('click', () => onRemoveBot(p.id));
+      li.append(kick);
+    }
     list.append(li);
   });
   knownPlayerIds = new Set(players.map((p) => p.id));
 
-  const isHost = selfId === hostId;
   const canStart = players.length >= 2;
   const startBtn = el<HTMLButtonElement>('btn-start');
   startBtn.hidden = !isHost;
   startBtn.disabled = !canStart;
   el('start-hint').hidden = !isHost || canStart;
   el('wait-hint').hidden = isHost;
+  el('bot-controls').hidden = !isHost;
+  el<HTMLButtonElement>('btn-add-bot').disabled = players.length >= 4;
 }
 
 function makeBadge(text: string): HTMLSpanElement {

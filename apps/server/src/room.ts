@@ -1,11 +1,15 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { WebSocket } from 'ws';
 import {
+  computeBotInput,
+  createBotBrain,
   createGame,
   EMPTY_INPUT,
   MAX_PLAYERS,
   step,
   TICK_MS,
+  type BotBrain,
+  type BotDifficulty,
   type GameState,
   type InputState,
   type LobbyPlayer,
@@ -38,12 +42,23 @@ interface Client {
   ws: WebSocket;
 }
 
+// Joueur piloté par l'IA : pas de socket, ses inputs sont calculés à chaque tick.
+interface Bot {
+  id: PlayerId;
+  name: string;
+  difficulty: BotDifficulty;
+  brain: BotBrain;
+}
+
+const BOT_NAMES = ['Bim', 'Bam', 'Boum'];
+
 // Une partie et son lobby : machine à états lobby → running → lobby.
 // Le serveur est autoritaire — les clients n'envoient que des inputs.
 export class Room {
   readonly code: string;
   private readonly onEmpty: () => void;
   private clients: Client[] = [];
+  private bots: Bot[] = [];
   private hostId: PlayerId = '';
   private phase: 'lobby' | 'running' = 'lobby';
   private state: GameState | null = null;
@@ -66,7 +81,7 @@ export class Room {
   //   { id } du joueur, ou { error } si la room est pleine ou en partie
   join(ws: WebSocket, name: string): { id: PlayerId } | { error: JoinError } {
     if (this.phase !== 'lobby') return { error: 'game_in_progress' };
-    if (this.clients.length >= MAX_PLAYERS) return { error: 'room_full' };
+    if (this.clients.length + this.bots.length >= MAX_PLAYERS) return { error: 'room_full' };
     const id = randomUUID();
     this.clients.push({ id, name, ws });
     if (this.clients.length === 1) this.hostId = id;
@@ -90,12 +105,14 @@ export class Room {
   // Output
   //   None
   start(playerId: PlayerId): void {
-    if (playerId !== this.hostId || this.phase !== 'lobby' || this.clients.length < 2) return;
+    const total = this.clients.length + this.bots.length;
+    if (playerId !== this.hostId || this.phase !== 'lobby' || total < 2) return;
     const seed = randomBytes(4).readUInt32BE(0);
-    this.state = createGame(seed, this.clients.map((c) => c.id));
+    this.state = createGame(seed, [...this.clients, ...this.bots].map((c) => c.id));
     this.feeds = new Map(
       this.clients.map((c) => [c.id, { keys: EMPTY_INPUT, buffer: new Map(), lastApplied: -1 }])
     );
+    for (const bot of this.bots) bot.brain = createBotBrain(randomBytes(4).readUInt32BE(0));
     this.phase = 'running';
     this.overTicksLeft = -1;
     this.broadcast({ type: 'start', seed });
@@ -118,6 +135,45 @@ export class Room {
     if (feed.buffer.size > 32) {
       const ticks = [...feed.buffer.keys()].sort((a, b) => a - b);
       for (const t of ticks.slice(0, ticks.length - 16)) feed.buffer.delete(t);
+    }
+  }
+
+  // Parameters
+  //   playerId — joueur demandant l'ajout (doit être l'hôte)
+  //   difficulty — easy | medium | hard
+  // What it does
+  //   Ajoute un bot au lobby (nom pioché dans BOT_NAMES) si la demande vient
+  //   de l'hôte, en lobby, et que la room n'est pas pleine. Diffuse le lobby.
+  // Output
+  //   None
+  addBot(playerId: PlayerId, difficulty: BotDifficulty): void {
+    if (playerId !== this.hostId || this.phase !== 'lobby') return;
+    if (this.clients.length + this.bots.length >= MAX_PLAYERS) return;
+    const used = new Set(this.bots.map((b) => b.name));
+    const name = BOT_NAMES.find((n) => !used.has(n)) ?? `Bot ${this.bots.length + 1}`;
+    this.bots.push({
+      id: `bot-${randomUUID()}`,
+      name,
+      difficulty,
+      brain: createBotBrain(randomBytes(4).readUInt32BE(0)),
+    });
+    this.broadcast({ type: 'lobby', players: this.lobbyPlayers(), hostId: this.hostId });
+  }
+
+  // Parameters
+  //   playerId — joueur demandant le retrait (doit être l'hôte)
+  //   botId — identifiant du bot à retirer
+  // What it does
+  //   Retire un bot du lobby (hôte uniquement, en lobby uniquement) et diffuse
+  //   le nouvel état du lobby. Ignoré si l'id ne correspond à aucun bot.
+  // Output
+  //   None
+  removeBot(playerId: PlayerId, botId: PlayerId): void {
+    if (playerId !== this.hostId || this.phase !== 'lobby') return;
+    const before = this.bots.length;
+    this.bots = this.bots.filter((b) => b.id !== botId);
+    if (this.bots.length !== before) {
+      this.broadcast({ type: 'lobby', players: this.lobbyPlayers(), hostId: this.hostId });
     }
   }
 
@@ -173,6 +229,9 @@ export class Room {
         inputs[id] = feed.keys;
         acks[id] = feed.lastApplied;
       }
+      for (const bot of this.bots) {
+        inputs[bot.id] = computeBotInput(this.state, bot.id, bot.difficulty, bot.brain);
+      }
       this.state = step(this.state, inputs);
       this.broadcast({ type: 'snapshot', state: this.state, acks });
       if (this.state.phase !== 'over') return;
@@ -205,7 +264,10 @@ export class Room {
   }
 
   private lobbyPlayers(): LobbyPlayer[] {
-    return this.clients.map((c) => ({ id: c.id, name: c.name }));
+    return [
+      ...this.clients.map((c) => ({ id: c.id, name: c.name })),
+      ...this.bots.map((b) => ({ id: b.id, name: b.name, bot: true, difficulty: b.difficulty })),
+    ];
   }
 
   private send(ws: WebSocket, msg: ServerMsg): void {

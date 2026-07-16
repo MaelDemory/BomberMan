@@ -3,4 +3,5 @@ export * from './engine/types';
 export * from './bomberman/constants';
 export * from './bomberman/state';
 export * from './bomberman/step';
+export * from './bomberman/bot';
 export * from './protocol/messages';

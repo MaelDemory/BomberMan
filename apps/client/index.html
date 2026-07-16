@@ -50,8 +50,17 @@
         <div id="room-code" class="room-code"></div>
         <p class="hint">Envoie ce code à tes amis, puis à toi de jouer !</p>
         <ul id="player-list" class="player-list"></ul>
+        <div id="bot-controls" class="bot-controls" hidden>
+          <label for="bot-difficulty" class="visually-hidden">Difficulté du bot</label>
+          <select id="bot-difficulty">
+            <option value="easy">Facile</option>
+            <option value="medium" selected>Moyen</option>
+            <option value="hard">Difficile</option>
+          </select>
+          <button type="button" id="btn-add-bot" class="btn btn-secondary">+ Ajouter un bot</button>
+        </div>
         <button id="btn-start" class="btn btn-primary" hidden>C'est parti !</button>
-        <p id="start-hint" class="hint" hidden>Il faut au moins 2 joueurs pour lancer.</p>
+        <p id="start-hint" class="hint" hidden>Il faut au moins 2 joueurs (bots compris) pour lancer.</p>
         <p id="wait-hint" class="hint" hidden>L'hôte lance la partie dès que tout le monde est là…</p>
       </section>
 

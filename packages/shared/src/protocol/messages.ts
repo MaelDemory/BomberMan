@@ -1,12 +1,17 @@
 import type { InputState, PlayerId } from '../engine/types';
 import type { GameState } from '../bomberman/state';
+import type { BotDifficulty } from '../bomberman/bot';
 
 export const MAX_NAME_LENGTH = 16;
 export const ROOM_CODE_LENGTH = 4;
 
+export const BOT_DIFFICULTIES: readonly BotDifficulty[] = ['easy', 'medium', 'hard'];
+
 export interface LobbyPlayer {
   id: PlayerId;
   name: string;
+  bot?: boolean;
+  difficulty?: BotDifficulty;
 }
 
 export type ClientMsg =
@@ -17,6 +22,9 @@ export type ClientMsg =
   // dernier tick consommé dans chaque snapshot, ce qui permet au client de
   // rejouer ses inputs non acquittés (réconciliation exacte, sans glissement).
   | { type: 'input'; tick: number; keys: InputState }
+  // Gestion des bots — hôte uniquement, en lobby uniquement (validé serveur).
+  | { type: 'addBot'; difficulty: BotDifficulty }
+  | { type: 'removeBot'; botId: PlayerId }
   | { type: 'leave' };
 
 export type ServerMsg =
@@ -88,6 +96,14 @@ export function parseClientMsg(raw: string): ClientMsg | null {
       const tick = typeof data.tick === 'number' && Number.isInteger(data.tick) && data.tick >= 0 ? data.tick : null;
       return keys && tick !== null ? { type: 'input', tick, keys } : null;
     }
+    case 'addBot':
+      return BOT_DIFFICULTIES.includes(data.difficulty as BotDifficulty)
+        ? { type: 'addBot', difficulty: data.difficulty as BotDifficulty }
+        : null;
+    case 'removeBot':
+      return typeof data.botId === 'string' && data.botId.length > 0 && data.botId.length <= 64
+        ? { type: 'removeBot', botId: data.botId }
+        : null;
     case 'leave':
       return { type: 'leave' };
     default:
